@@ -9,6 +9,11 @@ using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using DomainDrivenWebApplication.API.Models;
+using DomainDrivenWebApplication.Domain.Entities;
+using OpenTelemetry.Logs;
+using DomainDrivenWebApplication.API.Extensions;
+
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -26,8 +31,12 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());    // Serialize enums as strings
     });
 
-// Register AutoMapper
-builder.Services.AddAutoMapper(typeof(Program));
+// Register AutoMapper with inline mapping profile
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.CreateMap<School, SchoolDto>().ReverseMap();
+});
+
 
 // Register services
 builder.Services.AddScoped<ISchoolRepository, SchoolRepository>();
@@ -45,34 +54,50 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Configure OpenTelemetry
-string? tracingOtlpEndpoint = builder.Configuration["OTLP_ENDPOINT_URL"];
-OpenTelemetryBuilder otel = builder.Services.AddOpenTelemetry();
+string? openTelemetryEndpoint = builder.Configuration["OTLP_ENDPOINT_URL"];
+OpenTelemetryBuilder openTelemetry = builder.Services.AddOpenTelemetry();
 
 // Configure OpenTelemetry Resources with the application name
-otel.ConfigureResource(resource => resource
+openTelemetry.ConfigureResource(resource => resource
     .AddService(serviceName: builder.Environment.ApplicationName));
 
-// Add Metrics for ASP.NET Core and our custom metrics and export to Prometheus
-otel.WithMetrics(metrics => metrics
+// Add Metrics for ASP.NET Core
+openTelemetry.WithMetrics(metrics =>
+{
     // Metrics provider from OpenTelemetry
-    .AddAspNetCoreInstrumentation()
-    .AddMeter("SchoolAPI")
+    metrics.AddAspNetCoreInstrumentation();
+    metrics.AddMeter("SchoolAPI");
     // Metrics provides by ASP.NET Core in .NET 8
-    .AddMeter("Microsoft.AspNetCore.Hosting")
-    .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
-    .AddConsoleExporter());
+    metrics.AddMeter("Microsoft.AspNetCore.Hosting");
+    metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
+    if (openTelemetryEndpoint != null)
+    {
+        //Prometheus
+        //AppInsights
+        metrics.AddOtlpExporter(option =>
+        {
+            //otlpOptions.Endpoint = new Uri(tracingOtlpEndpoint);
+        });
+    }
+    else
+    {
+        metrics.AddConsoleExporter();
+    }
+});
 
-// Add Tracing for ASP.NET Core and our custom ActivitySource and export to Jaeger
-otel.WithTracing(tracing =>
+// Add Tracing for ASP.NET Core
+openTelemetry.WithTracing(tracing =>
 {
     tracing.AddAspNetCoreInstrumentation();
     tracing.AddHttpClientInstrumentation();
     tracing.AddSource("Activity School API");
-    if (tracingOtlpEndpoint != null)
+    if (openTelemetryEndpoint != null)
     {
-        tracing.AddOtlpExporter(otlpOptions =>
+        //Prometheus
+        //AppInsights
+        tracing.AddOtlpExporter(option =>
         {
-            otlpOptions.Endpoint = new Uri(tracingOtlpEndpoint);
+            //otlpOptions.Endpoint = new Uri(tracingOtlpEndpoint);
         });
     }
     else
@@ -80,6 +105,27 @@ otel.WithTracing(tracing =>
         tracing.AddConsoleExporter();
     }
 });
+
+// Add Logging with OpenTelemetry
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddOpenTelemetry(options =>
+{
+    options.AddConsoleExporter();
+    if (openTelemetryEndpoint != null)
+    {
+        options.AddOtlpExporter(otlpOptions =>
+        {
+            // otlpOptions.Endpoint = new Uri(openTelemetryEndpoint);
+        });
+    }
+});
+
+// Add custom redacting logger provider
+builder.Logging.AddProvider(new CustomRedactingLoggerProvider());
+
+// Apply filters to avoid logging sensitive data below Information level
+builder.Logging.AddFilter((category, level) => level >= LogLevel.Information);
 
 WebApplication app = builder.Build();
 
@@ -101,5 +147,12 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Ensure database is created and apply any pending migrations
+using (IServiceScope scope = app.Services.CreateScope())
+{
+    SchoolContext dbContext = scope.ServiceProvider.GetRequiredService<SchoolContext>();
+    dbContext.Database.Migrate(); // Apply any pending migrations
+}
 
 app.Run();

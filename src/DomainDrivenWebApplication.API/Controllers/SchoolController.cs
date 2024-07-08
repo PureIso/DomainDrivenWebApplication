@@ -22,7 +22,15 @@ public class SchoolController : ControllerBase
     }
 
     // GET: api/school
+    /// <summary>
+    /// Retrieves all schools.
+    /// </summary>
+    /// <returns>A list of SchoolDto objects.</returns>
+    /// <response code="200">Returns the list of schools.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet]
+    [ProducesResponseType(typeof(List<SchoolDto>), 200)]
+    [ProducesResponseType(500)]
     public async Task<ActionResult<List<SchoolDto>>> GetAllSchools()
     {
         try
@@ -39,7 +47,18 @@ public class SchoolController : ControllerBase
     }
 
     // GET: api/school/5
+    /// <summary>
+    /// Retrieves a school by ID.
+    /// </summary>
+    /// <param name="id">The ID of the school.</param>
+    /// <returns>A SchoolDto object.</returns>
+    /// <response code="200">Returns the school with the specified ID.</response>
+    /// <response code="404">If the school with the given ID does not exist.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(SchoolDto), 200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
     public async Task<ActionResult<SchoolDto>> GetSchoolById(int id)
     {
         try
@@ -60,7 +79,18 @@ public class SchoolController : ControllerBase
     }
 
     // POST: api/school
+    /// <summary>
+    /// Adds a new school.
+    /// </summary>
+    /// <param name="schoolDto">The SchoolDto object representing the school to add.</param>
+    /// <returns>The newly created SchoolDto object.</returns>
+    /// <response code="201">Returns the newly created school.</response>
+    /// <response code="400">If the schoolDto is invalid or null.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpPost]
+    [ProducesResponseType(typeof(SchoolDto), 201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(500)]
     public async Task<ActionResult<SchoolDto>> AddSchool([FromBody] SchoolDto schoolDto)
     {
         try
@@ -78,7 +108,19 @@ public class SchoolController : ControllerBase
     }
 
     // PUT: api/school/5
+    /// <summary>
+    /// Updates an existing school.
+    /// </summary>
+    /// <param name="id">The ID of the school to update.</param>
+    /// <param name="schoolDto">The updated SchoolDto object.</param>
+    /// <returns>NoContent if successful, BadRequest if IDs do not match.</returns>
+    /// <response code="204">If the school was successfully updated.</response>
+    /// <response code="400">If the ID in the path does not match the ID in the schoolDto.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpPut("{id}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(500)]
     public async Task<IActionResult> UpdateSchool(int id, [FromBody] SchoolDto schoolDto)
     {
         try
@@ -100,7 +142,18 @@ public class SchoolController : ControllerBase
     }
 
     // DELETE: api/school/5
+    /// <summary>
+    /// Deletes a school by ID.
+    /// </summary>
+    /// <param name="id">The ID of the school to delete.</param>
+    /// <returns>NoContent if successful, NotFound if school not found.</returns>
+    /// <response code="204">If the school was successfully deleted.</response>
+    /// <response code="404">If the school with the given ID does not exist.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpDelete("{id}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
     public async Task<IActionResult> DeleteSchool(int id)
     {
         try
@@ -122,7 +175,18 @@ public class SchoolController : ControllerBase
     }
 
     // GET: api/school/history/5
+    /// <summary>
+    /// Retrieves the history of changes for a school by ID.
+    /// </summary>
+    /// <param name="id">The ID of the school.</param>
+    /// <returns>A list of SchoolDto objects representing the history.</returns>
+    /// <response code="200">Returns the history of changes for the school.</response>
+    /// <response code="404">If the school with the given ID does not exist.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("history/{id}")]
+    [ProducesResponseType(typeof(List<SchoolDto>), 200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
     public async Task<ActionResult<List<SchoolDto>>> GetSchoolHistory(int id)
     {
         try
@@ -143,7 +207,19 @@ public class SchoolController : ControllerBase
     }
 
     // GET: api/school/range?fromDate=2023-01-01&toDate=2023-12-31
+    /// <summary>
+    /// Retrieves schools within a specified date range.
+    /// </summary>
+    /// <param name="fromDate">The start date of the range.</param>
+    /// <param name="toDate">The end date of the range.</param>
+    /// <returns>A list of SchoolDto objects within the specified date range.</returns>
+    /// <response code="200">Returns the schools within the specified date range.</response>
+    /// <response code="404">If no schools are found within the specified date range.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("range")]
+    [ProducesResponseType(typeof(List<SchoolDto>), 200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
     public async Task<ActionResult<List<SchoolDto>>> GetSchoolsByDateRange([FromQuery] DateTime fromDate, [FromQuery] DateTime toDate)
     {
         try

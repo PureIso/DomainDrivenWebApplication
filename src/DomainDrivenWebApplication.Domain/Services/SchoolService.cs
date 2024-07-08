@@ -43,6 +43,9 @@ public class SchoolService
     {
         // Perform any business logic validations here if needed
         school.CreatedAt = DateTime.UtcNow;
+        //since principal name is required but not part of the Dto, let's set it to a default value
+        //Not the best example I guess, but it's just for demonstration purposes
+        school.PrincipalName = string.Empty;
         return await _schoolRepository.AddAsync(school);
     }
 
