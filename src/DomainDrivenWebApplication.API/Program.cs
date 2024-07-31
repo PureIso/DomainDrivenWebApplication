@@ -5,22 +5,38 @@ using DomainDrivenWebApplication.Infrastructure.Data;
 using DomainDrivenWebApplication.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using DomainDrivenWebApplication.API.Models;
 using DomainDrivenWebApplication.Domain.Entities;
 using OpenTelemetry.Logs;
-using DomainDrivenWebApplication.API.Extensions;
+using Serilog;
+using System.Reflection;
+using Asp.Versioning;
+using DomainDrivenWebApplication.Infrastructure.Logging;
+using DomainDrivenWebApplication.API.Middleware;
 
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+builder.Configuration.SetBasePath(Directory.GetCurrentDirectory());
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true);
+builder.Configuration.AddEnvironmentVariables();
 
-// Load configuration from appsettings.json and environment-specific files
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-string environment = builder.Environment.EnvironmentName;
-builder.Configuration.AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
+bool useRelaxedEscaping = builder.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Docker";
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production")
+    .WriteTo.Console(new CustomSerilogJsonFormatter(useRelaxedEscaping))
+    .CreateLogger();
+builder.Host.UseSerilog();
+
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Docker")
+{
+    builder.Configuration.AddUserSecrets<Program>();
+    builder.Configuration.AddEnvironmentVariables(); // overwrites previous values
+}
 
 // Configure JSON serialization options
 builder.Services.AddControllers()
@@ -30,6 +46,19 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.WriteIndented = true;                             // Format JSON responses with indentation
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());    // Serialize enums as strings
     });
+
+builder.Services.AddApiVersioning(options =>
+{
+    // Specify the default API version
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 
 // Register AutoMapper with inline mapping profile
 builder.Services.AddAutoMapper(cfg =>
@@ -51,84 +80,36 @@ builder.Services.AddDbContext<SchoolContext>(options =>
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "School API", Version = "v1" });
+    string xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    string xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if(File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
 });
 
 // Configure OpenTelemetry
-string? openTelemetryEndpoint = builder.Configuration["OTLP_ENDPOINT_URL"];
-OpenTelemetryBuilder openTelemetry = builder.Services.AddOpenTelemetry();
-
-// Configure OpenTelemetry Resources with the application name
-openTelemetry.ConfigureResource(resource => resource
-    .AddService(serviceName: builder.Environment.ApplicationName));
-
-// Add Metrics for ASP.NET Core
-openTelemetry.WithMetrics(metrics =>
-{
-    // Metrics provider from OpenTelemetry
-    metrics.AddAspNetCoreInstrumentation();
-    metrics.AddMeter("SchoolAPI");
-    // Metrics provides by ASP.NET Core in .NET 8
-    metrics.AddMeter("Microsoft.AspNetCore.Hosting");
-    metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
-    if (openTelemetryEndpoint != null)
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
     {
-        //Prometheus
-        //AppInsights
-        metrics.AddOtlpExporter(option =>
-        {
-            //otlpOptions.Endpoint = new Uri(tracingOtlpEndpoint);
-        });
-    }
-    else
+        metrics.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("conveyor.controller"));
+        metrics.AddRuntimeInstrumentation()
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddConsoleExporter();
+    })
+    .WithTracing(tracing =>
     {
-        metrics.AddConsoleExporter();
-    }
-});
-
-// Add Tracing for ASP.NET Core
-openTelemetry.WithTracing(tracing =>
-{
-    tracing.AddAspNetCoreInstrumentation();
-    tracing.AddHttpClientInstrumentation();
-    tracing.AddSource("Activity School API");
-    if (openTelemetryEndpoint != null)
+        tracing.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("conveyor.controller"));
+        tracing.AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddConsoleExporter();
+    })
+    .WithLogging(logging =>
     {
-        //Prometheus
-        //AppInsights
-        tracing.AddOtlpExporter(option =>
-        {
-            //otlpOptions.Endpoint = new Uri(tracingOtlpEndpoint);
-        });
-    }
-    else
-    {
-        tracing.AddConsoleExporter();
-    }
-});
-
-// Add Logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(options =>
-{
-    options.AddConsoleExporter();
-    if (openTelemetryEndpoint != null)
-    {
-        options.AddOtlpExporter(otlpOptions =>
-        {
-            // otlpOptions.Endpoint = new Uri(openTelemetryEndpoint);
-        });
-    }
-});
-
-// Add custom redacting logger provider
-builder.Logging.AddProvider(new CustomRedactingLoggerProvider());
-
-// Apply filters to avoid logging sensitive data below Information level
-builder.Logging.AddFilter((category, level) => level >= LogLevel.Information);
+        logging.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("conveyor.controller"));
+    });
 
 WebApplication app = builder.Build();
 
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -138,11 +119,11 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseRouting();
 app.UseAuthorization();
 

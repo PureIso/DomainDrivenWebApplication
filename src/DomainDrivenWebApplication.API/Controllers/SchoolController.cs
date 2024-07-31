@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using AutoMapper;
 using DomainDrivenWebApplication.API.Models;
 using DomainDrivenWebApplication.Domain.Entities;
@@ -6,14 +7,24 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DomainDrivenWebApplication.API.Controllers;
 
-[Route("api/[controller]")]
+/// <summary>
+/// Handles requests related to schools.
+/// </summary>
 [ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
 public class SchoolController : ControllerBase
 {
     private readonly SchoolService _schoolService;
     private readonly IMapper _mapper;
     private readonly ILogger<SchoolController>? _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SchoolController"/> class.
+    /// </summary>
+    /// <param name="schoolService">The service used for school operations.</param>
+    /// <param name="mapper">The mapper used for DTO mappings.</param>
+    /// <param name="logger">The logger for logging errors.</param>
     public SchoolController(SchoolService schoolService, IMapper mapper, ILogger<SchoolController>? logger)
     {
         _schoolService = schoolService;
@@ -21,7 +32,6 @@ public class SchoolController : ControllerBase
         _logger = logger;
     }
 
-    // GET: api/school
     /// <summary>
     /// Retrieves all schools.
     /// </summary>
@@ -42,11 +52,10 @@ public class SchoolController : ControllerBase
         catch (Exception ex)
         {
             _logger?.LogError(ex, "An error occurred while getting all schools");
-            return Problem(detail: ex.Message, statusCode: 500); // Internal Server Error
+            return Problem(detail: ex.Message, statusCode: 500);
         }
     }
 
-    // GET: api/school/5
     /// <summary>
     /// Retrieves a school by ID.
     /// </summary>
@@ -66,19 +75,18 @@ public class SchoolController : ControllerBase
             School? school = await _schoolService.GetSchoolByIdAsync(id);
             if (school == null)
             {
-                return NotFound(); // 404 Not Found
+                return NotFound();
             }
             SchoolDto schoolDto = _mapper.Map<SchoolDto>(school);
-            return Ok(schoolDto); // 200 OK
+            return Ok(schoolDto);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "An error occurred while getting school by id {SchoolId}", id);
-            return Problem(detail: ex.Message, statusCode: 500); // Internal Server Error
+            return Problem(detail: ex.Message, statusCode: 500);
         }
     }
 
-    // POST: api/school
     /// <summary>
     /// Adds a new school.
     /// </summary>
@@ -98,16 +106,16 @@ public class SchoolController : ControllerBase
             School school = _mapper.Map<School>(schoolDto);
             await _schoolService.AddSchoolAsync(school);
             SchoolDto addedSchoolDto = _mapper.Map<SchoolDto>(school);
-            return CreatedAtAction(nameof(GetSchoolById), new { id = school.Id }, addedSchoolDto); // 201 Created
+
+            return CreatedAtAction(nameof(GetSchoolById), new { id = school.Id }, addedSchoolDto);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "An error occurred while adding a new school");
-            return Problem(detail: ex.Message, statusCode: 500); // Internal Server Error
+            return Problem(detail: ex.Message, statusCode: 500);
         }
     }
 
-    // PUT: api/school/5
     /// <summary>
     /// Updates an existing school.
     /// </summary>
@@ -126,22 +134,22 @@ public class SchoolController : ControllerBase
         try
         {
             School school = _mapper.Map<School>(schoolDto);
+
             if (id != school.Id)
             {
-                return BadRequest(); // 400 Bad Request
+                return BadRequest();
             }
 
             await _schoolService.UpdateSchoolAsync(school);
-            return NoContent(); // 204 No Content
+            return NoContent();
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "An error occurred while updating school with id {SchoolId}", id);
-            return Problem(detail: ex.Message, statusCode: 500); // Internal Server Error
+            return Problem(detail: ex.Message, statusCode: 500);
         }
     }
 
-    // DELETE: api/school/5
     /// <summary>
     /// Deletes a school by ID.
     /// </summary>
@@ -161,20 +169,19 @@ public class SchoolController : ControllerBase
             School? school = await _schoolService.GetSchoolByIdAsync(id);
             if (school == null)
             {
-                return NotFound(); // 404 Not Found
+                return NotFound();
             }
 
             await _schoolService.DeleteSchoolAsync(id);
-            return NoContent(); // 204 No Content
+            return NoContent();
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "An error occurred while deleting school with id {SchoolId}", id);
-            return Problem(detail: ex.Message, statusCode: 500); // Internal Server Error
+            return Problem(detail: ex.Message, statusCode: 500);
         }
     }
 
-    // GET: api/school/history/5
     /// <summary>
     /// Retrieves the history of changes for a school by ID.
     /// </summary>
@@ -191,22 +198,21 @@ public class SchoolController : ControllerBase
     {
         try
         {
-            List<School>? history = await _schoolService.GetAllVersionsOfSchoolAsync(id);
-            if (history == null || history.Count == 0)
+            List<School>? schoolHistory = await _schoolService.GetAllVersionsOfSchoolAsync(id);
+            if (schoolHistory == null || !schoolHistory.Any())
             {
-                return NotFound(); // 404 Not Found
+                return NotFound();
             }
-            List<SchoolDto> historyDtos = _mapper.Map<List<SchoolDto>>(history);
-            return Ok(historyDtos); // 200 OK
+            List<SchoolDto> schoolHistoryDtos = _mapper.Map<List<SchoolDto>>(schoolHistory);
+            return Ok(schoolHistoryDtos);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "An error occurred while getting history for school with id {SchoolId}", id);
-            return Problem(detail: ex.Message, statusCode: 500); // Internal Server Error
+            _logger?.LogError(ex, "An error occurred while getting school history for id {SchoolId}", id);
+            return Problem(detail: ex.Message, statusCode: 500);
         }
     }
 
-    // GET: api/school/range?fromDate=2023-01-01&toDate=2023-12-31
     /// <summary>
     /// Retrieves schools within a specified date range.
     /// </summary>
@@ -225,17 +231,17 @@ public class SchoolController : ControllerBase
         try
         {
             List<School>? schools = await _schoolService.GetSchoolsByDateRangeAsync(fromDate, toDate);
-            if (schools == null || schools.Count == 0)
+            if (schools == null || !schools.Any())
             {
-                return NotFound(); // 404 Not Found
+                return NotFound();
             }
             List<SchoolDto> schoolDtos = _mapper.Map<List<SchoolDto>>(schools);
-            return Ok(schoolDtos); // 200 OK
+            return Ok(schoolDtos);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "An error occurred while getting schools by date range from {FromDate} to {ToDate}", fromDate, toDate);
-            return Problem(detail: ex.Message, statusCode: 500); // Internal Server Error
+            return Problem(detail: ex.Message, statusCode: 500);
         }
     }
 }
