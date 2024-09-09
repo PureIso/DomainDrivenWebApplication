@@ -1,14 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>523a2584-9aab-4817-a30f-2aa8b1566eac</UserSecretsId>
-    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <DockerfileContext>.</DockerfileContext>
-    <DockerComposeProjectPath>..\..\docker-compose.dcproj</DockerComposeProjectPath>
+	  <TargetFramework>net8.0</TargetFramework>
+	  <Nullable>enable</Nullable>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <UserSecretsId>523a2584-9aab-4817-a30f-2aa8b1566eac</UserSecretsId>
+	  <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	  <DockerfileContext>..\..</DockerfileContext>
+	  <DockerComposeProjectPath>..\..\docker-compose.dcproj</DockerComposeProjectPath>
+    <DockerfileFile>..\..\docker\domaindrivenwebapplicationapi\Dockerfile</DockerfileFile>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+	  <DockerfileRunArguments>-p "127.0.0.1:8080:8080" -p "127.0.0.1:8081:8081"</DockerfileRunArguments>
   </PropertyGroup>
 
   <ItemGroup>

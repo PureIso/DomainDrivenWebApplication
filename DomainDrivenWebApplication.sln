@@ -11,7 +11,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DomainDrivenWebApplication.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DomainDrivenWebApplication.Tests", "tests\DomainDrivenWebApplication.Tests\DomainDrivenWebApplication.Tests.csproj", "{8F8DF2C0-39DD-4D65-9A10-055498405368}"
 EndProject
-Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{D3D23C7A-E4BB-425F-814E-6C038F35EDFD}"
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose\docker-compose.dcproj", "{D3D23C7A-E4BB-425F-814E-6C038F35EDFD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{132BDF75-CBA7-4B04-B2DD-1E64DA22510B}"
+	ProjectSection(SolutionItems) = preProject
+		docker\domaindrivenwebapplicationapi\Dockerfile = docker\domaindrivenwebapplicationapi\Dockerfile
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

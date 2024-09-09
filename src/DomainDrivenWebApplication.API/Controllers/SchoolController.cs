@@ -11,7 +11,7 @@ namespace DomainDrivenWebApplication.API.Controllers;
 /// Handles requests related to schools.
 /// </summary>
 [ApiController]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/v{version:apiVersion}/school")]
 [ApiVersion("1.0")]
 public class SchoolController : ControllerBase
 {

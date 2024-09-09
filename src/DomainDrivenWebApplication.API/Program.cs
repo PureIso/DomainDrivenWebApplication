@@ -1,55 +1,54 @@
-using System.Text.Json.Serialization;
+using Asp.Versioning;
+using DomainDrivenWebApplication.API.Middleware;
+using DomainDrivenWebApplication.API.Models;
+using DomainDrivenWebApplication.Domain.Entities;
 using DomainDrivenWebApplication.Domain.Interfaces;
 using DomainDrivenWebApplication.Domain.Services;
 using DomainDrivenWebApplication.Infrastructure.Data;
+using DomainDrivenWebApplication.Infrastructure.Logging;
 using DomainDrivenWebApplication.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Trace;
-using DomainDrivenWebApplication.API.Models;
-using DomainDrivenWebApplication.Domain.Entities;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using System.Reflection;
-using Asp.Versioning;
-using DomainDrivenWebApplication.Infrastructure.Logging;
-using DomainDrivenWebApplication.API.Middleware;
-
+using System.Text.Json.Serialization;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.Configuration.SetBasePath(Directory.GetCurrentDirectory());
-builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-builder.Configuration.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true);
-builder.Configuration.AddEnvironmentVariables();
 
-bool useRelaxedEscaping = builder.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Docker";
+// Configure Serilog
+bool useRelaxedEscaping = builder.Environment.IsDevelopment() || builder.Environment.EnvironmentName == "Docker";
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production")
     .WriteTo.Console(new CustomSerilogJsonFormatter(useRelaxedEscaping))
     .CreateLogger();
+
 builder.Host.UseSerilog();
 
+// Check if running in Docker
 if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Docker")
 {
     builder.Configuration.AddUserSecrets<Program>();
-    builder.Configuration.AddEnvironmentVariables(); // overwrites previous values
+    builder.Configuration.AddEnvironmentVariables();
 }
 
 // Configure JSON serialization options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.PropertyNamingPolicy = null;                      // Keep property names as-is (default camelCase)
-        options.JsonSerializerOptions.WriteIndented = true;                             // Format JSON responses with indentation
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());    // Serialize enums as strings
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        options.JsonSerializerOptions.WriteIndented = true;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
 builder.Services.AddApiVersioning(options =>
 {
-    // Specify the default API version
     options.DefaultApiVersion = new ApiVersion(1, 0);
     options.AssumeDefaultVersionWhenUnspecified = true;
     options.ReportApiVersions = true;
@@ -66,13 +65,13 @@ builder.Services.AddAutoMapper(cfg =>
     cfg.CreateMap<School, SchoolDto>().ReverseMap();
 });
 
-
 // Register services
 builder.Services.AddScoped<ISchoolRepository, SchoolRepository>();
 builder.Services.AddScoped<SchoolService>();
 
 // Add DbContext with connection string from appsettings
 string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+Log.Information("Connection: {connectionString}", connectionString);
 builder.Services.AddDbContext<SchoolContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -82,14 +81,14 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "School API", Version = "v1" });
     string xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     string xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if(File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
+    if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
 });
 
 // Configure OpenTelemetry
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics =>
     {
-        metrics.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("conveyor.controller"));
+        metrics.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("domaindrivenwebapplication.api"));
         metrics.AddRuntimeInstrumentation()
             .AddAspNetCoreInstrumentation()
             .AddRuntimeInstrumentation()
@@ -97,21 +96,20 @@ builder.Services.AddOpenTelemetry()
     })
     .WithTracing(tracing =>
     {
-        tracing.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("conveyor.controller"));
+        tracing.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("domaindrivenwebapplication.api"));
         tracing.AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             .AddConsoleExporter();
     })
     .WithLogging(logging =>
     {
-        logging.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("conveyor.controller"));
+        logging.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("domaindrivenwebapplication.api"));
     });
 
 WebApplication app = builder.Build();
 
-app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || builder.Environment.EnvironmentName == "Docker")
 {
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
@@ -120,20 +118,40 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseRouting();
 app.UseAuthorization();
-
 app.MapControllers();
 
 // Ensure database is created and apply any pending migrations
 using (IServiceScope scope = app.Services.CreateScope())
 {
     SchoolContext dbContext = scope.ServiceProvider.GetRequiredService<SchoolContext>();
-    dbContext.Database.Migrate(); // Apply any pending migrations
+    dbContext.Database.Migrate();
 }
+
+// Logging Kestrel and HTTPS certificate information
+ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
+IServer server = app.Services.GetRequiredService<IServer>();
+ICollection<string>? addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+
+if (addresses != null && addresses.Any())
+{
+    foreach (string address in addresses)
+    {
+        logger.LogInformation("Kestrel is listening on: {Address}", address);
+    }
+}
+else
+{
+    logger.LogInformation("Kestrel addresses are empty.");
+}
+
+// Log application startup
+logger.LogInformation("Application has started successfully.");
 
 app.Run();
