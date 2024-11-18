@@ -1,15 +1,21 @@
 ﻿using DomainDrivenWebApplication.Domain.Entities;
 using DomainDrivenWebApplication.Domain.Interfaces;
+using ErrorOr;
 
 namespace DomainDrivenWebApplication.Domain.Services;
 
 /// <summary>
 /// Service class responsible for business logic operations related to schools.
+/// Implements methods defined in <see cref="ISchoolRepository"/>.
 /// </summary>
 public class SchoolService
 {
     private readonly ISchoolRepository _schoolRepository;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SchoolService"/> class.
+    /// </summary>
+    /// <param name="schoolRepository">The repository to interact with school data.</param>
     public SchoolService(ISchoolRepository schoolRepository)
     {
         _schoolRepository = schoolRepository;
@@ -19,8 +25,8 @@ public class SchoolService
     /// Retrieves a school by its unique identifier asynchronously.
     /// </summary>
     /// <param name="id">The identifier of the school to retrieve.</param>
-    /// <returns>The school entity if found, otherwise null.</returns>
-    public async Task<School?> GetSchoolByIdAsync(int id)
+    /// <returns>The school entity wrapped in an <see cref="ErrorOr{T}"/>, or an error if not found.</returns>
+    public async Task<ErrorOr<School>> GetSchoolByIdAsync(int id)
     {
         return await _schoolRepository.GetByIdAsync(id);
     }
@@ -28,8 +34,8 @@ public class SchoolService
     /// <summary>
     /// Retrieves all schools asynchronously.
     /// </summary>
-    /// <returns>A list of school entities, or null if no schools exist.</returns>
-    public async Task<List<School>?> GetAllSchoolsAsync()
+    /// <returns>An <see cref="ErrorOr{T}"/> containing a list of school entities, or an error if retrieval fails.</returns>
+    public async Task<ErrorOr<List<School>>> GetAllSchoolsAsync()
     {
         return await _schoolRepository.GetAllAsync();
     }
@@ -38,14 +44,16 @@ public class SchoolService
     /// Adds a new school asynchronously.
     /// </summary>
     /// <param name="school">The school entity to add.</param>
-    /// <returns>True if changes to the database was made.</returns>
-    public async Task<bool> AddSchoolAsync(School school)
+    /// <returns>An <see cref="ErrorOr{T}"/> indicating success or failure.</returns>
+    public async Task<ErrorOr<bool>> AddSchoolAsync(School school)
     {
         // Perform any business logic validations here if needed
         school.CreatedAt = DateTime.UtcNow;
-        //since principal name is required but not part of the Dto, let's set it to a default value
-        //Not the best example I guess, but it's just for demonstration purposes
-        school.PrincipalName = string.Empty;
+
+        // Since PrincipalName is required but not part of the DTO, set a default value.
+        // Note: This approach should be validated based on domain requirements.
+        school.PrincipalName = string.IsNullOrWhiteSpace(school.PrincipalName) ? "Default Principal" : school.PrincipalName;
+
         return await _schoolRepository.AddAsync(school);
     }
 
@@ -53,23 +61,27 @@ public class SchoolService
     /// Updates an existing school asynchronously.
     /// </summary>
     /// <param name="school">The school entity to update.</param>
-    public async Task UpdateSchoolAsync(School school)
+    /// <returns>An <see cref="ErrorOr{T}"/> indicating success or failure.</returns>
+    public async Task<ErrorOr<bool>> UpdateSchoolAsync(School school)
     {
         // Perform any business logic validations here if needed
-        await _schoolRepository.UpdateAsync(school);
+        return await _schoolRepository.UpdateAsync(school);
     }
 
     /// <summary>
     /// Deletes a school by its identifier asynchronously.
     /// </summary>
     /// <param name="id">The identifier of the school to delete.</param>
-    public async Task DeleteSchoolAsync(int id)
+    /// <returns>An <see cref="ErrorOr{T}"/> indicating success or failure.</returns>
+    public async Task<ErrorOr<bool>> DeleteSchoolAsync(int id)
     {
-        School? school = await _schoolRepository.GetByIdAsync(id);
-        if (school != null)
+        ErrorOr<School> schoolResult = await _schoolRepository.GetByIdAsync(id);
+        if (schoolResult.IsError)
         {
-            await _schoolRepository.DeleteAsync(school);
+            return schoolResult.Errors;
         }
+
+        return await _schoolRepository.DeleteAsync(schoolResult.Value);
     }
 
     /// <summary>
@@ -77,8 +89,8 @@ public class SchoolService
     /// </summary>
     /// <param name="fromDate">The start date of the range.</param>
     /// <param name="toDate">The end date of the range.</param>
-    /// <returns>A list of school entities within the specified date range.</returns>
-    public async Task<List<School>?> GetSchoolsByDateRangeAsync(DateTime fromDate, DateTime toDate)
+    /// <returns>An <see cref="ErrorOr{T}"/> containing a list of schools within the specified date range, or an error.</returns>
+    public async Task<ErrorOr<List<School>>> GetSchoolsByDateRangeAsync(DateTime fromDate, DateTime toDate)
     {
         return await _schoolRepository.GetSchoolsByDateRangeAsync(fromDate, toDate);
     }
@@ -87,8 +99,8 @@ public class SchoolService
     /// Retrieves all versions of a school asynchronously.
     /// </summary>
     /// <param name="id">The identifier of the school.</param>
-    /// <returns>A list of all versions of the school entity.</returns>
-    public async Task<List<School>?> GetAllVersionsOfSchoolAsync(int id)
+    /// <returns>An <see cref="ErrorOr{T}"/> containing a list of all versions of the school entity, or an error.</returns>
+    public async Task<ErrorOr<List<School>>> GetAllVersionsOfSchoolAsync(int id)
     {
         return await _schoolRepository.GetAllVersionsAsync(id);
     }

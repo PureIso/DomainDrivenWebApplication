@@ -39,13 +39,16 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Docker")
 }
 
 // Configure JSON serialization options
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.PropertyNamingPolicy = null;
-        options.JsonSerializerOptions.WriteIndented = true;
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    });
+        .AddDataAnnotationsLocalization()
+        .AddViewLocalization()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.PropertyNamingPolicy = null;
+            options.JsonSerializerOptions.WriteIndented = true;
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        });
 
 builder.Services.AddApiVersioning(options =>
 {
@@ -120,6 +123,14 @@ else
     app.UseHsts();
     app.UseHttpsRedirection();
 }
+
+string[] supportedCultures = new[] { "en-US", "fr-FR", "de-DE" };
+RequestLocalizationOptions localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture("en-US")
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+
+app.UseRequestLocalization(localizationOptions);
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();

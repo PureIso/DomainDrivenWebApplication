@@ -14,18 +14,18 @@ public class School
     /// <summary>
     /// Name of the school.
     /// </summary>
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Address of the school.
     /// </summary>
-    public string? Address { get; set; }
+    public string Address { get; set; } = string.Empty;
 
     /// <summary>
     /// Principal's name of the school.
     /// Sensitive data (Example).
     /// </summary>
-    public string? PrincipalName { get; set; }
+    public string PrincipalName { get; set; } = string.Empty;
 
     /// <summary>
     /// Date and time when the school entity was created.

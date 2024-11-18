@@ -3,51 +3,56 @@ using AutoMapper;
 using DomainDrivenWebApplication.API.Models;
 using DomainDrivenWebApplication.Domain.Entities;
 using DomainDrivenWebApplication.Domain.Services;
+using ErrorOr;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace DomainDrivenWebApplication.API.Controllers;
 
 /// <summary>
-/// Handles requests related to schools.
+/// Controller for managing School entities, providing endpoints for retrieving, adding, updating, and deleting schools.
+/// Inherits from <see cref="BaseController"/> for common error handling functionality.
 /// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/school")]
 [ApiVersion("1.0")]
-public class SchoolController : ControllerBase
+public class SchoolController : BaseController
 {
     private readonly SchoolService _schoolService;
     private readonly IMapper _mapper;
-    private readonly ILogger<SchoolController>? _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SchoolController"/> class.
     /// </summary>
-    /// <param name="schoolService">The service used for school operations.</param>
-    /// <param name="mapper">The mapper used for DTO mappings.</param>
-    /// <param name="logger">The logger for logging errors.</param>
-    public SchoolController(SchoolService schoolService, IMapper mapper, ILogger<SchoolController>? logger)
+    /// <param name="schoolService">The <see cref="SchoolService"/> for interacting with school data.</param>
+    /// <param name="mapper">The <see cref="IMapper"/> to map between entities and DTOs.</param>
+    /// <param name="logger">The <see cref="ILogger{SchoolController}"/> for logging errors and events.</param>
+    /// <param name="localizer">The <see cref="IStringLocalizer{BaseController}"/> for localizing error messages.</param>
+    public SchoolController(SchoolService schoolService, IMapper mapper, ILogger<SchoolController> logger, IStringLocalizer<BaseController> localizer)
+        : base(logger, localizer)
     {
         _schoolService = schoolService;
         _mapper = mapper;
-        _logger = logger;
     }
 
     /// <summary>
-    /// Retrieves all schools.
+    /// Retrieves all schools from the database.
     /// </summary>
-    /// <returns>A list of SchoolDto objects.</returns>
-    /// <response code="200">Returns the list of schools.</response>
-    /// <response code="500">If an unexpected error occurs.</response>
+    /// <returns>A list of <see cref="SchoolDto"/> representing all schools.</returns>
+    /// <response code="200">Returns a list of schools.</response>
+    /// <response code="500">If an error occurs while retrieving the schools.</response>
     [HttpGet]
     [ProducesResponseType(typeof(List<SchoolDto>), 200)]
     [ProducesResponseType(500)]
-    public async Task<ActionResult<List<SchoolDto>>> GetAllSchools()
+    public async Task<IActionResult> GetAllSchools()
     {
         try
         {
-            List<School>? schools = await _schoolService.GetAllSchoolsAsync();
-            List<SchoolDto> schoolDtos = _mapper.Map<List<SchoolDto>>(schools);
-            return Ok(schoolDtos);
+            ErrorOr<List<School>> result = await _schoolService.GetAllSchoolsAsync();
+            return result.Match(
+                success => Ok(_mapper.Map<List<SchoolDto>>(success)),
+                HandleErrors
+            );
         }
         catch (Exception ex)
         {
@@ -57,28 +62,27 @@ public class SchoolController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves a school by ID.
+    /// Retrieves a specific school by its ID.
     /// </summary>
-    /// <param name="id">The ID of the school.</param>
-    /// <returns>A SchoolDto object.</returns>
+    /// <param name="id">The ID of the school to retrieve.</param>
+    /// <returns>A <see cref="SchoolDto"/> representing the school, or a 404 if not found.</returns>
     /// <response code="200">Returns the school with the specified ID.</response>
-    /// <response code="404">If the school with the given ID does not exist.</response>
-    /// <response code="500">If an unexpected error occurs.</response>
+    /// <response code="404">If the school with the specified ID is not found.</response>
+    /// <response code="500">If an error occurs while retrieving the school.</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(SchoolDto), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(500)]
-    public async Task<ActionResult<SchoolDto>> GetSchoolById(int id)
+    public async Task<IActionResult> GetSchoolById(int id)
     {
         try
         {
-            School? school = await _schoolService.GetSchoolByIdAsync(id);
-            if (school == null)
-            {
-                return NotFound();
-            }
-            SchoolDto schoolDto = _mapper.Map<SchoolDto>(school);
-            return Ok(schoolDto);
+            ErrorOr<School> result = await _schoolService.GetSchoolByIdAsync(id);
+            IActionResult a = result.Match(
+                success => Ok(_mapper.Map<SchoolDto>(success)),
+                HandleErrors
+            );
+            return a;
         }
         catch (Exception ex)
         {
@@ -88,26 +92,32 @@ public class SchoolController : ControllerBase
     }
 
     /// <summary>
-    /// Adds a new school.
+    /// Adds a new school to the database.
     /// </summary>
-    /// <param name="schoolDto">The SchoolDto object representing the school to add.</param>
-    /// <returns>The newly created SchoolDto object.</returns>
+    /// <param name="schoolDto">The data transfer object containing the school information to add.</param>
+    /// <returns>A 201 response with the created school.</returns>
     /// <response code="201">Returns the newly created school.</response>
-    /// <response code="400">If the schoolDto is invalid or null.</response>
-    /// <response code="500">If an unexpected error occurs.</response>
+    /// <response code="400">If the provided school data is invalid.</response>
+    /// <response code="500">If an error occurs while adding the school.</response>
     [HttpPost]
     [ProducesResponseType(typeof(SchoolDto), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(500)]
-    public async Task<ActionResult<SchoolDto>> AddSchool([FromBody] SchoolDto schoolDto)
+    public async Task<IActionResult> AddSchool([FromBody] SchoolDto schoolDto)
     {
         try
         {
-            School school = _mapper.Map<School>(schoolDto);
-            await _schoolService.AddSchoolAsync(school);
-            SchoolDto addedSchoolDto = _mapper.Map<SchoolDto>(school);
+            if (schoolDto == null)
+            {
+                return BadRequest("School data is required.");
+            }
 
-            return CreatedAtAction(nameof(GetSchoolById), new { id = school.Id }, addedSchoolDto);
+            School school = _mapper.Map<School>(schoolDto);
+            ErrorOr<bool> result = await _schoolService.AddSchoolAsync(school);
+            return result.Match(
+                success => CreatedAtAction(nameof(GetSchoolById), new { id = school.Id }, _mapper.Map<SchoolDto>(school)),
+                HandleErrors
+            );
         }
         catch (Exception ex)
         {
@@ -117,14 +127,14 @@ public class SchoolController : ControllerBase
     }
 
     /// <summary>
-    /// Updates an existing school.
+    /// Updates an existing school by its ID.
     /// </summary>
     /// <param name="id">The ID of the school to update.</param>
-    /// <param name="schoolDto">The updated SchoolDto object.</param>
-    /// <returns>NoContent if successful, BadRequest if IDs do not match.</returns>
-    /// <response code="204">If the school was successfully updated.</response>
-    /// <response code="400">If the ID in the path does not match the ID in the schoolDto.</response>
-    /// <response code="500">If an unexpected error occurs.</response>
+    /// <param name="schoolDto">The data transfer object containing the updated school information.</param>
+    /// <returns>A 204 response if the update is successful.</returns>
+    /// <response code="204">Indicates that the school was successfully updated.</response>
+    /// <response code="400">If the provided school data is invalid or the ID does not match.</response>
+    /// <response code="500">If an error occurs while updating the school.</response>
     [HttpPut("{id}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
@@ -133,15 +143,17 @@ public class SchoolController : ControllerBase
     {
         try
         {
-            School school = _mapper.Map<School>(schoolDto);
-
-            if (id != school.Id)
+            if (id != schoolDto.Id)
             {
-                return BadRequest();
+                return BadRequest("School ID mismatch.");
             }
 
-            await _schoolService.UpdateSchoolAsync(school);
-            return NoContent();
+            School school = _mapper.Map<School>(schoolDto);
+            ErrorOr<bool> result = await _schoolService.UpdateSchoolAsync(school);
+            return result.Match(
+                success => NoContent(),
+                HandleErrors
+            );
         }
         catch (Exception ex)
         {
@@ -151,13 +163,13 @@ public class SchoolController : ControllerBase
     }
 
     /// <summary>
-    /// Deletes a school by ID.
+    /// Deletes a school by its ID.
     /// </summary>
     /// <param name="id">The ID of the school to delete.</param>
-    /// <returns>NoContent if successful, NotFound if school not found.</returns>
-    /// <response code="204">If the school was successfully deleted.</response>
-    /// <response code="404">If the school with the given ID does not exist.</response>
-    /// <response code="500">If an unexpected error occurs.</response>
+    /// <returns>A 204 response if the school was successfully deleted.</returns>
+    /// <response code="204">Indicates that the school was successfully deleted.</response>
+    /// <response code="404">If the school with the specified ID is not found.</response>
+    /// <response code="500">If an error occurs while deleting the school.</response>
     [HttpDelete("{id}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
@@ -166,8 +178,8 @@ public class SchoolController : ControllerBase
     {
         try
         {
-            School? school = await _schoolService.GetSchoolByIdAsync(id);
-            if (school == null)
+            ErrorOr<School> result = await _schoolService.GetSchoolByIdAsync(id);
+            if (result.IsError)
             {
                 return NotFound();
             }
@@ -183,64 +195,38 @@ public class SchoolController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves the history of changes for a school by ID.
+    /// Retrieves a list of schools created within a specific date range.
     /// </summary>
-    /// <param name="id">The ID of the school.</param>
-    /// <returns>A list of SchoolDto objects representing the history.</returns>
-    /// <response code="200">Returns the history of changes for the school.</response>
-    /// <response code="404">If the school with the given ID does not exist.</response>
-    /// <response code="500">If an unexpected error occurs.</response>
-    [HttpGet("history/{id}")]
+    /// <param name="fromDate">The start date for filtering schools.</param>
+    /// <param name="toDate">The end date for filtering schools.</param>
+    /// <returns>A list of <see cref="SchoolDto"/> representing schools within the specified date range.</returns>
+    /// <response code="200">Returns a list of schools created within the specified date range.</response>
+    /// <response code="400">If the date range is invalid.</response>
+    /// <response code="500">If an error occurs while retrieving the schools.</response>
+    [HttpGet("by-date-range")]
     [ProducesResponseType(typeof(List<SchoolDto>), 200)]
-    [ProducesResponseType(404)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(500)]
-    public async Task<ActionResult<List<SchoolDto>>> GetSchoolHistory(int id)
+    public async Task<IActionResult> GetSchoolsByDateRange([FromQuery] DateTime fromDate, [FromQuery] DateTime toDate)
     {
         try
         {
-            List<School>? schoolHistory = await _schoolService.GetAllVersionsOfSchoolAsync(id);
-            if (schoolHistory == null || !schoolHistory.Any())
+            if (fromDate > toDate)
             {
-                return NotFound();
+                return BadRequest("The 'from' date must not be later than the 'to' date.");
             }
-            List<SchoolDto> schoolHistoryDtos = _mapper.Map<List<SchoolDto>>(schoolHistory);
-            return Ok(schoolHistoryDtos);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "An error occurred while getting school history for id {SchoolId}", id);
-            return Problem(detail: ex.Message, statusCode: 500);
-        }
-    }
 
-    /// <summary>
-    /// Retrieves schools within a specified date range.
-    /// </summary>
-    /// <param name="fromDate">The start date of the range.</param>
-    /// <param name="toDate">The end date of the range.</param>
-    /// <returns>A list of SchoolDto objects within the specified date range.</returns>
-    /// <response code="200">Returns the schools within the specified date range.</response>
-    /// <response code="404">If no schools are found within the specified date range.</response>
-    /// <response code="500">If an unexpected error occurs.</response>
-    [HttpGet("range")]
-    [ProducesResponseType(typeof(List<SchoolDto>), 200)]
-    [ProducesResponseType(404)]
-    [ProducesResponseType(500)]
-    public async Task<ActionResult<List<SchoolDto>>> GetSchoolsByDateRange([FromQuery] DateTime fromDate, [FromQuery] DateTime toDate)
-    {
-        try
-        {
-            List<School>? schools = await _schoolService.GetSchoolsByDateRangeAsync(fromDate, toDate);
-            if (schools == null || !schools.Any())
-            {
-                return NotFound();
-            }
-            List<SchoolDto> schoolDtos = _mapper.Map<List<SchoolDto>>(schools);
-            return Ok(schoolDtos);
+            // Call the service method to get schools within the date range
+            ErrorOr<List<School>> result = await _schoolService.GetSchoolsByDateRangeAsync(fromDate, toDate);
+
+            return result.Match(
+                success => Ok(_mapper.Map<List<SchoolDto>>(success)),
+                HandleErrors
+            );
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "An error occurred while getting schools by date range from {FromDate} to {ToDate}", fromDate, toDate);
+            _logger?.LogError(ex, "An error occurred while retrieving schools by date range.");
             return Problem(detail: ex.Message, statusCode: 500);
         }
     }

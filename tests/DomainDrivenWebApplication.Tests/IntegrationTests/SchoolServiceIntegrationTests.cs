@@ -1,11 +1,12 @@
 ﻿using DomainDrivenWebApplication.Domain.Entities;
 using DomainDrivenWebApplication.Domain.Services;
 using DomainDrivenWebApplication.Tests.Fixtures;
+using ErrorOr;
 
 namespace DomainDrivenWebApplication.Tests.IntegrationTests;
 
 [Collection("SchoolServiceTests")]
-public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDisposable, IAsyncLifetime
+public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture>, IDisposable, IAsyncLifetime
 {
     private readonly SchoolFixture _fixture;
 
@@ -24,11 +25,15 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDis
         School school = new School { Name = "Test School", Address = "Test Address", PrincipalName = "John Doe" };
 
         // Act
-        bool inserted = await service.AddSchoolAsync(school);
-        Assert.True(inserted);
-        School? retrievedSchool = await service.GetSchoolByIdAsync(school.Id);
+        ErrorOr<bool> result = await service.AddSchoolAsync(school);
 
         // Assert
+        Assert.False(result.IsError);
+        Assert.True(result.Value);
+
+        ErrorOr<School> retrievedResult = await service.GetSchoolByIdAsync(school.Id);
+        Assert.False(retrievedResult.IsError);
+        School? retrievedSchool = retrievedResult.Value;
         Assert.NotNull(retrievedSchool);
         Assert.Equal(school.Name, retrievedSchool.Name);
     }
@@ -43,15 +48,20 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDis
         School school1 = new School { Name = "School 1", Address = "Test Address", PrincipalName = "John Doe" };
         School school2 = new School { Name = "School 2", Address = "Test 2 Address", PrincipalName = "John Doe" };
 
-        bool inserted = await service.AddSchoolAsync(school1);
-        Assert.True(inserted);
-        inserted = await service.AddSchoolAsync(school2);
-        Assert.True(inserted);
+        ErrorOr<bool> result1 = await service.AddSchoolAsync(school1);
+        Assert.False(result1.IsError);
+        Assert.True(result1.Value);
+
+        ErrorOr<bool> result2 = await service.AddSchoolAsync(school2);
+        Assert.False(result2.IsError);
+        Assert.True(result2.Value);
 
         // Act
-        List<School>? schools = await service.GetAllSchoolsAsync();
+        ErrorOr<List<School>> schoolsResult = await service.GetAllSchoolsAsync();
 
         // Assert
+        Assert.False(schoolsResult.IsError);
+        List<School>? schools = schoolsResult.Value;
         Assert.NotNull(schools);
         Assert.Contains(schools, s => s.Name == "School 1");
         Assert.Contains(schools, s => s.Name == "School 2");
@@ -65,15 +75,20 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDis
         Assert.NotNull(service);
 
         School school = new School { Name = "Test School", Address = "Test Address", PrincipalName = "John Doe" };
-        bool inserted = await service.AddSchoolAsync(school);
-        Assert.True(inserted);
+        ErrorOr<bool> result = await service.AddSchoolAsync(school);
+        Assert.False(result.IsError);
+        Assert.True(result.Value);
 
         // Act
         school.Name = "Updated School";
-        await service.UpdateSchoolAsync(school);
-        School? updatedSchool = await service.GetSchoolByIdAsync(school.Id);
+        ErrorOr<bool> updateResult = await service.UpdateSchoolAsync(school);
 
         // Assert
+        Assert.False(updateResult.IsError); // Ensure no errors during update
+
+        ErrorOr<School> updatedSchoolResult = await service.GetSchoolByIdAsync(school.Id);
+        Assert.False(updatedSchoolResult.IsError);
+        School? updatedSchool = updatedSchoolResult.Value;
         Assert.NotNull(updatedSchool);
         Assert.Equal("Updated School", updatedSchool.Name);
     }
@@ -86,14 +101,18 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDis
         Assert.NotNull(service);
 
         School school = new School { Name = "Test School", Address = "Test Address", PrincipalName = "John Doe" };
-        await service.AddSchoolAsync(school);
+        ErrorOr<bool> result = await service.AddSchoolAsync(school);
+        Assert.False(result.IsError);
+        Assert.True(result.Value);
 
         // Act
-        await service.DeleteSchoolAsync(school.Id);
-        School? deletedSchool = await service.GetSchoolByIdAsync(school.Id);
+        ErrorOr<bool> deleteResult = await service.DeleteSchoolAsync(school.Id);
 
         // Assert
-        Assert.Null(deletedSchool);
+        Assert.False(deleteResult.IsError);
+
+        ErrorOr<School> deletedSchoolResult = await service.GetSchoolByIdAsync(school.Id);
+        Assert.True(deletedSchoolResult.IsError);
     }
 
     [Fact]
@@ -103,22 +122,28 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDis
         SchoolService? service = _fixture.SchoolService;
         Assert.NotNull(service);
 
-        School school = new School { Name = "School 1", Address = "Test Address", PrincipalName = "John Doe"};
-        bool inserted = await service.AddSchoolAsync(school);
-        Assert.True(inserted);
+        School school = new School { Name = "School 1", Address = "Test Address", PrincipalName = "John Doe", CreatedAt = DateTime.UtcNow };
+        ErrorOr<bool> insertResult = await service.AddSchoolAsync(school);
+        Assert.False(insertResult.IsError);
+        Assert.True(insertResult.Value);
 
         DateTime fromDate = DateTime.UtcNow;
-        School? retrievedSchool = await service.GetSchoolByIdAsync(1);
+        ErrorOr<School> retrievedSchoolResult = await service.GetSchoolByIdAsync(school.Id);
+        Assert.False(retrievedSchoolResult.IsError);
+        School? retrievedSchool = retrievedSchoolResult.Value;
         Assert.NotNull(retrievedSchool);
 
+        // Update the school name
         retrievedSchool.Name = "School 2";
-        await service.UpdateSchoolAsync(retrievedSchool);
+        ErrorOr<bool> updateResult = await service.UpdateSchoolAsync(retrievedSchool);
+        Assert.False(updateResult.IsError);
 
         // Act
-        List<School>? schools = await service.GetSchoolsByDateRangeAsync(fromDate.AddDays(5), DateTime.MaxValue);
-
+        ErrorOr<List<School>> schoolsResult = await service.GetSchoolsByDateRangeAsync(fromDate.AddDays(1), DateTime.MaxValue);
 
         // Assert
+        Assert.False(schoolsResult.IsError);
+        List<School>? schools = schoolsResult.Value;
         Assert.NotNull(schools);
         Assert.Contains(schools, s => s.Name == "School 2");
         Assert.DoesNotContain(schools, s => s.Name == "School 1");
@@ -132,49 +157,35 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDis
         Assert.NotNull(service);
 
         // Create and add the initial version of the school
-        School school = new School { Name = "School 1", Address = "Test Address", PrincipalName = "John Doe"};
-
-        bool inserted = await service.AddSchoolAsync(school);
-        Assert.True(inserted);
+        School school = new School { Name = "School 1", Address = "Test Address", PrincipalName = "John Doe" };
+        ErrorOr<bool> insertResult = await service.AddSchoolAsync(school);
+        Assert.False(insertResult.IsError);
+        Assert.True(insertResult.Value);
 
         // Update the school to create a new version
-        School? retrievedSchool = await service.GetSchoolByIdAsync(1);
+        ErrorOr<School> retrievedSchoolResult = await service.GetSchoolByIdAsync(school.Id);
+        Assert.False(retrievedSchoolResult.IsError);
+        School? retrievedSchool = retrievedSchoolResult.Value;
         Assert.NotNull(retrievedSchool);
         retrievedSchool.Name = "School 2";
         retrievedSchool.Address = "Address 2";
 
-        await service.UpdateSchoolAsync(retrievedSchool);
-
+        ErrorOr<bool> updateResult = await service.UpdateSchoolAsync(retrievedSchool);
+        Assert.False(updateResult.IsError);
 
         // Act
-        List<School>? schools = await service.GetAllVersionsOfSchoolAsync(1);
+        ErrorOr<List<School>> versionsResult = await service.GetAllVersionsOfSchoolAsync(school.Id);
 
         // Assert
-        Assert.NotNull(schools);
-        Assert.Equal(2, schools.Count); // Expecting two versions
+        Assert.False(versionsResult.IsError);
+        List<School>? versions = versionsResult.Value;
+        Assert.NotNull(versions);
+        Assert.Equal(2, versions.Count);
 
-        // Optional: Assert specific properties of each version if needed
-        Assert.Equal("School 1", schools[0].Name);
-        Assert.Equal("School 2", schools[1].Name);
+        Assert.Equal("School 1", versions[0].Name);
+        Assert.Equal("School 2", versions[1].Name);
     }
 
-
-    private async Task CleanupData()
-    {
-        if (_fixture.SchoolService != null)
-        {
-            List<School>? schools = await _fixture.SchoolService.GetAllSchoolsAsync();
-            if (schools != null)
-            {
-                foreach (School school in schools)
-                {
-                    await _fixture.SchoolService.DeleteSchoolAsync(school.Id);
-                }
-            }
-        }
-    }
-
-    // Ensure cleanup after each test
     public async Task InitializeAsync()
     {
         await _fixture.InitializeAsync();
@@ -186,7 +197,7 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture> , IDis
     }
 
     public void Dispose()
-    { 
+    {
         _fixture.Dispose();
     }
 }

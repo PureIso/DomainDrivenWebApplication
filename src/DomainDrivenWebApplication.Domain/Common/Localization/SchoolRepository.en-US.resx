@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <!-- Resource file for the School repository localization -->
+
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>1.3</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.3500.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.3500.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+
+    <!-- Localization strings for the School repository -->
+    <data name="SchoolNotFound">
+        <value>School not found.</value>
+    </data>
+    <data name="NoSchoolsFound">
+        <value>No schools found.</value>
+    </data>
+    <data name="FailedToAddSchool">
+        <value>Failed to add the school.</value>
+    </data>
+    <data name="FailedToUpdateSchool">
+        <value>Failed to update the school.</value>
+    </data>
+    <data name="FailedToDeleteSchool">
+        <value>Failed to delete the school.</value>
+    </data>
+    <data name="NoSchoolsFoundInDateRange">
+        <value>No schools found within the date range.</value>
+    </data>
+    <data name="NoSchoolVersionsFound">
+        <value>No versions found for the specified school.</value>
+    </data>
+</root>

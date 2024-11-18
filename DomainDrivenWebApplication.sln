@@ -15,6 +15,7 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{132BDF75-CBA7-4B04-B2DD-1E64DA22510B}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		docker\domaindrivenwebapplicationapi\Dockerfile = docker\domaindrivenwebapplicationapi\Dockerfile
 	EndProjectSection
 EndProject
