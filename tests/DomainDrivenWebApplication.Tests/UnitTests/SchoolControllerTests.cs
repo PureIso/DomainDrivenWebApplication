@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using DomainDrivenWebApplication.API.Controllers;
-using DomainDrivenWebApplication.API.Models;
+using DomainDrivenWebApplication.Domain.Common.Models;
 using DomainDrivenWebApplication.Domain.Entities;
 using DomainDrivenWebApplication.Domain.Interfaces;
 using DomainDrivenWebApplication.Domain.Services;

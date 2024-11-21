@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using AutoMapper;
-using DomainDrivenWebApplication.API.Models;
+using DomainDrivenWebApplication.Domain.Common.Models;
 using DomainDrivenWebApplication.Domain.Entities;
 using DomainDrivenWebApplication.Domain.Services;
 using ErrorOr;
@@ -51,7 +51,7 @@ public class SchoolController : BaseController
             ErrorOr<List<School>> result = await _schoolService.GetAllSchoolsAsync();
             return result.Match(
                 success => Ok(_mapper.Map<List<SchoolDto>>(success)),
-                HandleErrors
+                errors => HandleErrors(errors)
             );
         }
         catch (Exception ex)
@@ -80,7 +80,7 @@ public class SchoolController : BaseController
             ErrorOr<School> result = await _schoolService.GetSchoolByIdAsync(id);
             IActionResult a = result.Match(
                 success => Ok(_mapper.Map<SchoolDto>(success)),
-                HandleErrors
+                errors => HandleErrors(errors)
             );
             return a;
         }
@@ -116,7 +116,7 @@ public class SchoolController : BaseController
             ErrorOr<bool> result = await _schoolService.AddSchoolAsync(school);
             return result.Match(
                 success => CreatedAtAction(nameof(GetSchoolById), new { id = school.Id }, _mapper.Map<SchoolDto>(school)),
-                HandleErrors
+                errors => HandleErrors(errors)
             );
         }
         catch (Exception ex)
@@ -152,7 +152,7 @@ public class SchoolController : BaseController
             ErrorOr<bool> result = await _schoolService.UpdateSchoolAsync(school);
             return result.Match(
                 success => NoContent(),
-                HandleErrors
+                errors => HandleErrors(errors)
             );
         }
         catch (Exception ex)
@@ -221,7 +221,7 @@ public class SchoolController : BaseController
 
             return result.Match(
                 success => Ok(_mapper.Map<List<SchoolDto>>(success)),
-                HandleErrors
+                errors => HandleErrors(errors)
             );
         }
         catch (Exception ex)

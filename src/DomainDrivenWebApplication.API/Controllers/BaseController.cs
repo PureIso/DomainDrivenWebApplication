@@ -29,6 +29,8 @@ public class BaseController : ControllerBase
     /// </summary>
     /// <param name="errors">A collection of errors to process.</param>
     /// <returns>An <see cref="IActionResult"/> representing the HTTP response.</returns>
+    [NonAction]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public IActionResult HandleErrors(IEnumerable<Error> errors)
     {
         if (errors == null || !errors.Any())

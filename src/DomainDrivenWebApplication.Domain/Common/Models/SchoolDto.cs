@@ -1,4 +1,4 @@
-﻿namespace DomainDrivenWebApplication.API.Models;
+﻿namespace DomainDrivenWebApplication.Domain.Common.Models;
 
 /// <summary>
 /// Safer representation of the School entity for the API.

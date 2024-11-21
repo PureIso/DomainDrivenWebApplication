@@ -1,5 +1,6 @@
 ﻿using DomainDrivenWebApplication.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -64,5 +65,15 @@ public sealed class SchoolContext : DbContext
         entity.Property(e => e.Name).IsRequired();          // Configures Name property to be required (not nullable).
         entity.Property(e => e.Address).IsRequired();       // Configures Address property to be required (not nullable).
         entity.Property(e => e.PrincipalName).IsRequired(); // Configures PrincipalName property to be required (not nullable).
+    }
+
+    /// <summary>
+    /// Configures warnings and behaviors for EF Core.
+    /// </summary>
+    /// <param name="optionsBuilder">The options builder.</param>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ConfigureWarnings(warnings => warnings.Log(RelationalEventId.PendingModelChangesWarning));
+        base.OnConfiguring(optionsBuilder);
     }
 }
