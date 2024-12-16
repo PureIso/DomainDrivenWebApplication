@@ -3,6 +3,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
+EXPOSE 8083
+EXPOSE 8084
 EXPOSE 1433
 
 # Install OpenSSL
