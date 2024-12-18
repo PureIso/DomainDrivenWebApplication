@@ -1,0 +1,105 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "domaindrivenwebapplication.api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
+      "LoadBalancerOptions": {
+        "Type": "RoundRobin"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/reader/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "domaindrivenwebapplication.api.reader",
+          "Port": 8082
+        }
+      ],
+      "UpstreamPathTemplate": "/api/reader/{everything}",
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
+      "LoadBalancerOptions": {
+        "Type": "RoundRobin"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/writer/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "domaindrivenwebapplication.api.writer",
+          "Port": 8083
+        }
+      ],
+      "UpstreamPathTemplate": "/api/writer/{everything}",
+      "UpstreamHttpMethod": [
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
+      "LoadBalancerOptions": {
+        "Type": "RoundRobin"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/swagger/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "domaindrivenwebapplication.api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/swagger/{everything}",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/reader/swagger/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "domaindrivenwebapplication.api.reader",
+          "Port": 8082
+        }
+      ],
+      "UpstreamPathTemplate": "/api/reader/swagger/{everything}",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/writer/swagger/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "domaindrivenwebapplication.api.writer",
+          "Port": 8083
+        }
+      ],
+      "UpstreamPathTemplate": "/api/writer/swagger/{everything}",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:8084"
+  }
+}
