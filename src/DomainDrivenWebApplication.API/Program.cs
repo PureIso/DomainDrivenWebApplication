@@ -31,7 +31,6 @@ builder.Services
     .AddDomain()
     .AddAPI();
 
-
 WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline
