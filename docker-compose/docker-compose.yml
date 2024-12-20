@@ -16,6 +16,67 @@ services:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://0.0.0.0:8080;https://0.0.0.0:8081
       ASPNETCORE_HTTPS_PORT: 8081
+      SERVICE_TYPE: "default"
+    restart: unless-stopped
+
+  domaindrivenwebapplication.api.reader:
+    image: ${DOCKER_REGISTRY-}domaindrivenwebapplicationapireader
+    build:
+      context: ..\
+      dockerfile: docker\domaindrivenwebapplicationapi\Dockerfile
+    container_name: domaindrivenwebapplication.api.reader
+    ports:
+      - "8082:8082"
+      - "8083:8083"
+    networks:
+      - app-network
+    depends_on:
+      - mssql
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://0.0.0.0:8082;https://0.0.0.0:8083
+      ASPNETCORE_HTTPS_PORT: 8083
+      SERVICE_TYPE: "reader"
+    restart: unless-stopped
+
+  domaindrivenwebapplication.api.writer:
+    image: ${DOCKER_REGISTRY-}domaindrivenwebapplicationapiwriter
+    build:
+      context: ..\
+      dockerfile: docker\domaindrivenwebapplicationapi\Dockerfile
+    container_name: domaindrivenwebapplication.api.writer
+    ports:
+      - "8084:8084"
+      - "8085:8085"
+    networks:
+      - app-network
+    depends_on:
+      - mssql
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://0.0.0.0:8084;https://0.0.0.0:8085
+      ASPNETCORE_HTTPS_PORT: 8085
+      SERVICE_TYPE: "writer"
+    restart: unless-stopped
+
+  domaindrivenwebapplication.gateway:
+    image: ${DOCKER_REGISTRY-}domaindrivenwebapplicationgateway
+    build:
+      context: ..\
+      dockerfile: docker\domaindrivenwebapplicationgateway\Dockerfile
+    container_name: domaindrivenwebapplication.gateway
+    ports:
+      - "8086:8086"
+      - "8087:8087"
+    networks:
+      - app-network
+    depends_on:
+      - domaindrivenwebapplication.api.reader
+      - domaindrivenwebapplication.api.writer
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://0.0.0.0:8086 ##// ;https://0.0.0.0:8087
+      ASPNETCORE_HTTPS_PORT: 8087
     restart: unless-stopped
 
   mssql:
@@ -28,6 +89,11 @@ services:
       - "1433:1433"
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourStr0ngP@ssw0rd!", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
 networks:
   app-network:
