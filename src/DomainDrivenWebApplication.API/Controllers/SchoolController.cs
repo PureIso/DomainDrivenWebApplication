@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using AutoMapper;
+using DomainDrivenWebApplication.API.Middleware;
 using DomainDrivenWebApplication.Domain.Common.Models;
 using DomainDrivenWebApplication.Domain.Entities;
 using DomainDrivenWebApplication.Domain.Services;
@@ -13,6 +14,7 @@ namespace DomainDrivenWebApplication.API.Controllers;
 /// Controller for managing School entities, providing endpoints for retrieving, adding, updating, and deleting schools.
 /// Inherits from <see cref="BaseController"/> for common error handling functionality.
 /// </summary>
+[ServiceFilter(typeof(ServiceTypeFilter))] 
 [ApiController]
 [Route("api/v{version:apiVersion}/school")]
 [ApiVersion("1.0")]
@@ -42,6 +44,7 @@ public class SchoolController : BaseController
     /// <response code="200">Returns a list of schools.</response>
     /// <response code="500">If an error occurs while retrieving the schools.</response>
     [HttpGet]
+    [ApiExplorerSettings(GroupName = "reader")]
     [ProducesResponseType(typeof(List<SchoolDto>), 200)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> GetAllSchools()
@@ -51,7 +54,7 @@ public class SchoolController : BaseController
             ErrorOr<List<School>> result = await _schoolService.GetAllSchoolsAsync();
             return result.Match(
                 success => Ok(_mapper.Map<List<SchoolDto>>(success)),
-                errors => HandleErrors(errors)
+                HandleErrors
             );
         }
         catch (Exception ex)
@@ -70,6 +73,7 @@ public class SchoolController : BaseController
     /// <response code="404">If the school with the specified ID is not found.</response>
     /// <response code="500">If an error occurs while retrieving the school.</response>
     [HttpGet("{id}")]
+    [ApiExplorerSettings(GroupName = "reader")]
     [ProducesResponseType(typeof(SchoolDto), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(500)]
@@ -80,7 +84,7 @@ public class SchoolController : BaseController
             ErrorOr<School> result = await _schoolService.GetSchoolByIdAsync(id);
             IActionResult a = result.Match(
                 success => Ok(_mapper.Map<SchoolDto>(success)),
-                errors => HandleErrors(errors)
+                HandleErrors
             );
             return a;
         }
@@ -100,6 +104,7 @@ public class SchoolController : BaseController
     /// <response code="400">If the provided school data is invalid.</response>
     /// <response code="500">If an error occurs while adding the school.</response>
     [HttpPost]
+    [ApiExplorerSettings(GroupName = "writer")]
     [ProducesResponseType(typeof(SchoolDto), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(500)]
@@ -116,7 +121,7 @@ public class SchoolController : BaseController
             ErrorOr<bool> result = await _schoolService.AddSchoolAsync(school);
             return result.Match(
                 success => CreatedAtAction(nameof(GetSchoolById), new { id = school.Id }, _mapper.Map<SchoolDto>(school)),
-                errors => HandleErrors(errors)
+                HandleErrors
             );
         }
         catch (Exception ex)
@@ -136,6 +141,7 @@ public class SchoolController : BaseController
     /// <response code="400">If the provided school data is invalid or the ID does not match.</response>
     /// <response code="500">If an error occurs while updating the school.</response>
     [HttpPut("{id}")]
+    [ApiExplorerSettings(GroupName = "writer")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(500)]
@@ -152,7 +158,7 @@ public class SchoolController : BaseController
             ErrorOr<bool> result = await _schoolService.UpdateSchoolAsync(school);
             return result.Match(
                 success => NoContent(),
-                errors => HandleErrors(errors)
+                HandleErrors
             );
         }
         catch (Exception ex)
@@ -171,6 +177,7 @@ public class SchoolController : BaseController
     /// <response code="404">If the school with the specified ID is not found.</response>
     /// <response code="500">If an error occurs while deleting the school.</response>
     [HttpDelete("{id}")]
+    [ApiExplorerSettings(GroupName = "writer")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     [ProducesResponseType(500)]
@@ -204,6 +211,7 @@ public class SchoolController : BaseController
     /// <response code="400">If the date range is invalid.</response>
     /// <response code="500">If an error occurs while retrieving the schools.</response>
     [HttpGet("by-date-range")]
+    [ApiExplorerSettings(GroupName = "reader")]
     [ProducesResponseType(typeof(List<SchoolDto>), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(500)]
@@ -221,7 +229,7 @@ public class SchoolController : BaseController
 
             return result.Match(
                 success => Ok(_mapper.Map<List<SchoolDto>>(success)),
-                errors => HandleErrors(errors)
+                HandleErrors
             );
         }
         catch (Exception ex)

@@ -1,0 +1,60 @@
+@startuml
+
+' Define the main components
+package "Web Server" {
+    [Main API] --> [Command Service] : Sends write requests
+    [Main API] --> [Query Service] : Sends read requests
+    [Main API] --> [Swagger UI] : Provides API documentation
+    [Main API] --> [Serilog] : Logs application events
+}
+
+package "Command Side (CQRS)" {
+    [Command Service] --> [Command School Repository] : Interacts for writing data
+    [Command Service] --> [Command School DbContext] : Communicates with DB for writes
+    [Command School Repository] --> [Command School DbContext] : Accesses DB for write operations
+}
+
+package "Query Side (CQRS)" {
+    [Query Service] --> [Query School Repository] : Interacts for reading data
+    [Query Service] --> [Query School DbContext] : Communicates with DB for reads
+    [Query School Repository] --> [Query School DbContext] : Accesses DB for read operations
+}
+
+package "Database" {
+    [SQL Server] 
+    [Command School DbContext] --> [SQL Server] : Write operations
+    [Query School DbContext] --> [SQL Server] : Read operations
+}
+
+' Add relationships between the components
+[Command Service] --> [Command School Repository] : Write operations
+[Query Service] --> [Query School Repository] : Read operations
+
+' Use legend to describe components instead of notes
+legend right
+    Main API:
+    Handles incoming HTTP requests and routes them to Command or Query services as needed.
+
+    Command Service:
+    Handles write operations (Command side of CQRS), executes business logic and interacts with repositories.
+
+    Query Service:
+    Handles read operations (Query side of CQRS), executes business logic and interacts with repositories.
+
+    Command School Repository:
+    Provides access to the data layer for write operations.
+
+    Query School Repository:
+    Provides access to the data layer for read operations.
+
+    Command School DbContext:
+    Responsible for managing database connections for write operations.
+
+    Query School DbContext:
+    Responsible for managing database connections for read operations.
+
+    SQL Server:
+    Stores data, handles both read and write transactions.
+end legend
+
+@enduml
