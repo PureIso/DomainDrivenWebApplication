@@ -5,6 +5,12 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Get the current environment (e.g., Development, Production, Docker)
 string environment = builder.Environment.EnvironmentName;
+// Check if running in Docker
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Docker")
+{
+    builder.Configuration.AddUserSecrets<Program>();
+    builder.Configuration.AddEnvironmentVariables();
+}
 
 // Add the corresponding ocelot configuration file
 string ocelotConfigFile = $"ocelot.{environment}.json";
