@@ -10,104 +10,108 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-namespace DomainDrivenWebApplication.Infrastructure;
-
-/// <summary>
-/// Provides extension methods for configuring and initializing infrastructure services, 
-/// including database contexts, repositories, and telemetry instrumentation.
-/// </summary>
-public static class InfrastructureServiceCollectionExtensions
+namespace DomainDrivenWebApplication.Infrastructure
 {
     /// <summary>
-    /// Configures and registers infrastructure services such as database contexts, repositories, and OpenTelemetry instrumentation.
+    /// Provides extension methods for configuring and initializing infrastructure services, 
+    /// including database contexts, repositories, and telemetry instrumentation.
     /// </summary>
-    /// <param name="services">The <see cref="IServiceCollection"/> to which the services are added.</param>
-    /// <param name="configuration">The <see cref="IConfiguration"/> instance to retrieve configuration values.</param>
-    /// <returns>The configured <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static class InfrastructureServiceCollectionExtensions
     {
-        string? connectionString = configuration.GetConnectionString("DefaultConnection");
-        string serviceType = Environment.GetEnvironmentVariable("SERVICE_TYPE") ?? "default";
+        /// <summary>
+        /// Configures and registers infrastructure services such as database contexts, repositories, and OpenTelemetry instrumentation.
+        /// </summary>
+        /// <param name="services">The <see cref="IServiceCollection"/> to which the services are added.</param>
+        /// <param name="configuration">The <see cref="IConfiguration"/> instance to retrieve configuration values.</param>
+        /// <returns>The configured <see cref="IServiceCollection"/> instance.</returns>
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        {
+            string? connectionString = configuration.GetConnectionString("DefaultConnection");
+            string serviceType = Environment.GetEnvironmentVariable("SERVICE_TYPE") ?? "default";
 
-        if (serviceType.Equals("reader", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddDbContext<QuerySchoolContext>(options => options.UseSqlServer(connectionString));
-            services.AddScoped<ISchoolQueryRepository, SchoolQueryRepository>();
-        }
-        else if (serviceType.Equals("writer", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddDbContext<CommandSchoolContext>(options => options.UseSqlServer(connectionString));
-            services.AddScoped<ISchoolCommandRepository, SchoolCommandRepository>();
-        }
-        else
-        {
-            services.AddDbContext<SchoolContext>(options => options.UseSqlServer(connectionString));
-            services.AddScoped<ISchoolRepository, SchoolRepository>();
-        }
-
-        services.AddOpenTelemetry()
-            .WithMetrics(metrics =>
+            if (serviceType.Equals("reader", StringComparison.OrdinalIgnoreCase))
             {
-                metrics.SetResourceBuilder(ResourceBuilder.CreateDefault()
-                    .AddService($"domaindrivenwebapplication.api-{serviceType}"));
-                metrics.AddRuntimeInstrumentation()
-                    .AddAspNetCoreInstrumentation()
-                    .AddConsoleExporter();
-            })
-            .WithTracing(tracing =>
+                services.AddDbContextFactory<SchoolQueryContext>(options => options.UseSqlServer(connectionString));
+                services.AddScoped<ISchoolQueryRepository, SchoolQueryRepository>();
+            }
+            else if (serviceType.Equals("writer", StringComparison.OrdinalIgnoreCase))
             {
-                tracing.SetResourceBuilder(ResourceBuilder.CreateDefault()
-                    .AddService($"domaindrivenwebapplication.api-{serviceType}"));
-                tracing.AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddConsoleExporter();
-            })
-            .WithLogging(logging =>
+                services.AddDbContextFactory<SchoolCommandContext>(options => options.UseSqlServer(connectionString));
+                services.AddScoped<ISchoolCommandRepository, SchoolCommandRepository>();
+            }
+            else
             {
-                logging.SetResourceBuilder(ResourceBuilder.CreateDefault()
-                    .AddService($"domaindrivenwebapplication.api-{serviceType}"));
-            });
+                services.AddDbContextFactory<SchoolContext>(options => options.UseSqlServer(connectionString));
+                services.AddScoped<ISchoolRepository, SchoolRepository>();
+            }
 
-        return services;
-    }
+            services.AddOpenTelemetry()
+                .WithMetrics(metrics =>
+                {
+                    metrics.SetResourceBuilder(ResourceBuilder.CreateDefault()
+                        .AddService($"domaindrivenwebapplication.api-{serviceType}"));
+                    metrics.AddRuntimeInstrumentation()
+                        .AddAspNetCoreInstrumentation()
+                        .AddConsoleExporter();
+                })
+                .WithTracing(tracing =>
+                {
+                    tracing.SetResourceBuilder(ResourceBuilder.CreateDefault()
+                        .AddService($"domaindrivenwebapplication.api-{serviceType}"));
+                    tracing.AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddConsoleExporter();
+                })
+                .WithLogging(logging =>
+                {
+                    logging.SetResourceBuilder(ResourceBuilder.CreateDefault()
+                        .AddService($"domaindrivenwebapplication.api-{serviceType}"));
+                });
 
-    /// <summary>
-    /// Ensures that the database is up-to-date by applying pending migrations.
-    /// </summary>
-    /// <param name="app">The <see cref="WebApplication"/> instance used to access application services.</param>
-    public static void EnsureDatabase(WebApplication app)
-    {
-        using IServiceScope scope = app.Services.CreateScope();
-        IServiceProvider serviceProvider = scope.ServiceProvider;
-
-        string serviceType = Environment.GetEnvironmentVariable("SERVICE_TYPE") ?? "default";
-
-        if (serviceType.Equals("reader", StringComparison.OrdinalIgnoreCase))
-        {
-            QuerySchoolContext queryContext = serviceProvider.GetRequiredService<QuerySchoolContext>();
-            ApplyMigrations(queryContext);
+            return services;
         }
-        else if (serviceType.Equals("writer", StringComparison.OrdinalIgnoreCase))
-        {
-            CommandSchoolContext commandContext = serviceProvider.GetRequiredService<CommandSchoolContext>();
-            ApplyMigrations(commandContext);
-        }
-        else
-        {
-            SchoolContext schoolContext = serviceProvider.GetRequiredService<SchoolContext>();
-            ApplyMigrations(schoolContext);
-        }
-    }
 
-    /// <summary>
-    /// Applies pending migrations for the specified <see cref="DbContext"/>.
-    /// </summary>
-    /// <param name="context">The <see cref="DbContext"/> for which migrations are applied.</param>
-    private static void ApplyMigrations(DbContext context)
-    {
-        if (context.Database.GetPendingMigrations().Any())
+        /// <summary>
+        /// Ensures that the database is up-to-date by applying pending migrations.
+        /// </summary>
+        /// <param name="app">The <see cref="WebApplication"/> instance used to access application services.</param>
+        public static void EnsureDatabase(WebApplication app)
         {
-            context.Database.Migrate();
+            using IServiceScope scope = app.Services.CreateScope();
+            IServiceProvider serviceProvider = scope.ServiceProvider;
+
+            string serviceType = Environment.GetEnvironmentVariable("SERVICE_TYPE") ?? "default";
+
+            if (serviceType.Equals("reader", StringComparison.OrdinalIgnoreCase))
+            {
+                IDbContextFactory<SchoolQueryContext> queryContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<SchoolQueryContext>>();
+                using SchoolQueryContext queryContext = queryContextFactory.CreateDbContext();
+                ApplyMigrations(queryContext);
+            }
+            else if (serviceType.Equals("writer", StringComparison.OrdinalIgnoreCase))
+            {
+                IDbContextFactory<SchoolCommandContext> commandContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<SchoolCommandContext>>();
+                using SchoolCommandContext commandContext = commandContextFactory.CreateDbContext();
+                ApplyMigrations(commandContext);
+            }
+            else
+            {
+                IDbContextFactory<SchoolContext> schoolContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<SchoolContext>>();
+                using SchoolContext schoolContext = schoolContextFactory.CreateDbContext();
+                ApplyMigrations(schoolContext);
+            }
+        }
+
+        /// <summary>
+        /// Applies pending migrations for the specified <see cref="DbContext"/>.
+        /// </summary>
+        /// <param name="context">The <see cref="DbContext"/> for which migrations are applied.</param>
+        private static void ApplyMigrations(DbContext context)
+        {
+            if (context.Database.GetPendingMigrations().Any())
+            {
+                context.Database.Migrate();
+            }
         }
     }
 }
