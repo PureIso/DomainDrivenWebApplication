@@ -1,8 +1,8 @@
 ﻿namespace DomainDrivenWebApplication.Domain;
 
-using DomainDrivenWebApplication.Domain.Common.Models;
-using DomainDrivenWebApplication.Domain.Entities;
-using DomainDrivenWebApplication.Domain.Services;
+using Common.Models;
+using Entities;
+using Services;
 using Microsoft.Extensions.DependencyInjection;
 
 public static class DomainServiceCollectionExtensions
