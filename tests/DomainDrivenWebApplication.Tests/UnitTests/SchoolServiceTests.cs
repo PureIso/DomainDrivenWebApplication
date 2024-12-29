@@ -8,13 +8,15 @@ namespace DomainDrivenWebApplication.Tests.UnitTests;
 
 public class SchoolServiceTests
 {
-    private readonly Mock<ISchoolRepository> _mockSchoolRepository;
+    private readonly Mock<ISchoolCommandRepository> _mockSchoolCommandRepository;
+    private readonly Mock<ISchoolQueryRepository> _mockSchoolQueryRepository;
     private readonly SchoolService _schoolService;
 
     public SchoolServiceTests()
     {
-        _mockSchoolRepository = new Mock<ISchoolRepository>();
-        _schoolService = new SchoolService(_mockSchoolRepository.Object);
+        _mockSchoolCommandRepository = new Mock<ISchoolCommandRepository>();
+        _mockSchoolQueryRepository = new Mock<ISchoolQueryRepository>();
+        _schoolService = new SchoolService(_mockSchoolCommandRepository.Object, _mockSchoolQueryRepository.Object);
     }
 
     [Fact]
@@ -23,7 +25,7 @@ public class SchoolServiceTests
         // Arrange
         int schoolId = 1;
         School school = new School { Id = schoolId, Name = "School 1" };
-        _mockSchoolRepository
+        _mockSchoolQueryRepository
             .Setup(repo => repo.GetByIdAsync(schoolId))
             .ReturnsAsync(school);
 
@@ -45,7 +47,7 @@ public class SchoolServiceTests
             new School { Id = 1, Name = "School 1" },
             new School { Id = 2, Name = "School 2" }
         };
-        _mockSchoolRepository
+        _mockSchoolQueryRepository
             .Setup(repo => repo.GetAllAsync())
             .ReturnsAsync(schools);
 
@@ -62,7 +64,7 @@ public class SchoolServiceTests
     {
         // Arrange
         School newSchool = new School { Name = "New School" };
-        _mockSchoolRepository
+        _mockSchoolCommandRepository
             .Setup(repo => repo.AddAsync(newSchool))
             .ReturnsAsync(true);
 
@@ -72,7 +74,7 @@ public class SchoolServiceTests
         // Assert
         Assert.False(result.IsError, "Expected no errors when adding school.");
         Assert.True(result.Value);
-        _mockSchoolRepository.Verify(repo => repo.AddAsync(newSchool), Times.Once);
+        _mockSchoolCommandRepository.Verify(repo => repo.AddAsync(newSchool), Times.Once);
     }
 
     [Fact]
@@ -80,7 +82,7 @@ public class SchoolServiceTests
     {
         // Arrange
         School existingSchool = new School { Id = 1, Name = "Existing School" };
-        _mockSchoolRepository
+        _mockSchoolCommandRepository
             .Setup(repo => repo.UpdateAsync(existingSchool))
             .ReturnsAsync(true);
 
@@ -90,7 +92,7 @@ public class SchoolServiceTests
         // Assert
         Assert.False(result.IsError, "Expected no errors when updating school.");
         Assert.True(result.Value);
-        _mockSchoolRepository.Verify(repo => repo.UpdateAsync(existingSchool), Times.Once);
+        _mockSchoolCommandRepository.Verify(repo => repo.UpdateAsync(existingSchool), Times.Once);
     }
 
     [Fact]
@@ -99,10 +101,10 @@ public class SchoolServiceTests
         // Arrange
         int schoolId = 1;
         School existingSchool = new School { Id = schoolId, Name = "Existing School" };
-        _mockSchoolRepository
+        _mockSchoolQueryRepository
             .Setup(repo => repo.GetByIdAsync(schoolId))
             .ReturnsAsync(existingSchool);
-        _mockSchoolRepository
+        _mockSchoolCommandRepository
             .Setup(repo => repo.DeleteAsync(existingSchool))
             .ReturnsAsync(true);
 
@@ -112,7 +114,7 @@ public class SchoolServiceTests
         // Assert
         Assert.False(result.IsError, "Expected no errors when deleting school.");
         Assert.True(result.Value);
-        _mockSchoolRepository.Verify(repo => repo.DeleteAsync(existingSchool), Times.Once);
+        _mockSchoolCommandRepository.Verify(repo => repo.DeleteAsync(existingSchool), Times.Once);
     }
 
     [Fact]
@@ -126,7 +128,7 @@ public class SchoolServiceTests
             new School { Id = 1, Name = "School 1" },
             new School { Id = 2, Name = "School 2" }
         };
-        _mockSchoolRepository
+        _mockSchoolQueryRepository
             .Setup(repo => repo.GetSchoolsByDateRangeAsync(fromDate, toDate))
             .ReturnsAsync(schoolsInRange);
 
@@ -148,7 +150,7 @@ public class SchoolServiceTests
             new School { Id = schoolId, Name = "School 1" },
             new School { Id = schoolId, Name = "School 1 - Updated" }
         };
-        _mockSchoolRepository
+        _mockSchoolQueryRepository
             .Setup(repo => repo.GetAllVersionsAsync(schoolId))
             .ReturnsAsync(schoolVersions);
 
