@@ -20,17 +20,17 @@ namespace DomainDrivenWebApplication.API.Controllers;
 [ApiVersion("1.0")]
 public class SchoolController : BaseController
 {
-    private readonly SchoolService _schoolService;
+    private readonly SchoolServiceCommandQuery _schoolService;
     private readonly IMapper _mapper;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SchoolController"/> class.
     /// </summary>
-    /// <param name="schoolService">The <see cref="SchoolService"/> for interacting with school data.</param>
+    /// <param name="schoolService">The <see cref="SchoolServiceCommandQuery"/> for interacting with school data.</param>
     /// <param name="mapper">The <see cref="IMapper"/> to map between entities and DTOs.</param>
     /// <param name="logger">The <see cref="ILogger{SchoolController}"/> for logging errors and events.</param>
     /// <param name="localizer">The <see cref="IStringLocalizer{BaseController}"/> for localizing error messages.</param>
-    public SchoolController(SchoolService schoolService, IMapper mapper, ILogger<SchoolController> logger, IStringLocalizer<BaseController> localizer)
+    public SchoolController(SchoolServiceCommandQuery schoolService, IMapper mapper, ILogger<SchoolController> logger, IStringLocalizer<BaseController> localizer)
         : base(logger, localizer)
     {
         _schoolService = schoolService;
