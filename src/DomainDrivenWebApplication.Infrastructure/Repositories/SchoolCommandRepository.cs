@@ -14,6 +14,11 @@ public class SchoolCommandRepository : ISchoolCommandRepository
 {
     private readonly IDbContextFactory<SchoolCommandContext> _contextFactory;
     private readonly IStringLocalizer<SchoolCommandRepository> _localizer;
+    private const string FailedToAddSchoolErrorCode = "FailedToAddSchool";
+    private const string FailedToUpdateSchoolErrorCode = "FailedToUpdateSchool";
+    private const string FailedToDeleteSchoolErrorCode = "FailedToDeleteSchool";
+    private const string UnexpectedErrorCode = "UnexpectedError";
+    private const string SchoolNotFoundErrorCode = "SchoolNotFound";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SchoolCommandRepository"/> class.
@@ -38,17 +43,16 @@ public class SchoolCommandRepository : ISchoolCommandRepository
             int entries = await context.SaveChangesAsync();
             context.Entry(school).State = EntityState.Detached;
 
-            if (entries > 0)
+            if (entries <= 0)
             {
-                return true;
+                return Error.Failure(_localizer[FailedToAddSchoolErrorCode], FailedToAddSchoolErrorCode);
             }
 
-            const string errorCode = "FailedToAddSchool";
-            return Error.Failure(_localizer[errorCode], errorCode);
+            return true;
         }
         catch (Exception ex)
         {
-            return Error.Failure(_localizer["UnexpectedError"], ex.Message);
+            return Error.Failure(_localizer[UnexpectedErrorCode], ex.Message);
         }
     }
 
@@ -59,10 +63,10 @@ public class SchoolCommandRepository : ISchoolCommandRepository
         {
             await using SchoolCommandContext context = await _contextFactory.CreateDbContextAsync();
             School? existingSchool = await context.Schools.FindAsync(school.Id);
+
             if (existingSchool == null)
             {
-                string errorCode = "SchoolNotFound";
-                return Error.NotFound(_localizer[errorCode], errorCode);
+                return Error.NotFound(_localizer[SchoolNotFoundErrorCode], SchoolNotFoundErrorCode);
             }
 
             existingSchool.Name = school.Name;
@@ -72,11 +76,16 @@ public class SchoolCommandRepository : ISchoolCommandRepository
             int entries = await context.SaveChangesAsync();
             context.Entry(existingSchool).State = EntityState.Detached;
 
-            return entries > 0 ? true : Error.Failure(_localizer["FailedToUpdateSchool"], "FailedToUpdateSchool");
+            if (entries <= 0)
+            {
+                return Error.Failure(_localizer[FailedToUpdateSchoolErrorCode], FailedToUpdateSchoolErrorCode);
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
-            return Error.Failure(_localizer["UnexpectedError"], ex.Message);
+            return Error.Failure(_localizer[UnexpectedErrorCode], ex.Message);
         }
     }
 
@@ -87,20 +96,25 @@ public class SchoolCommandRepository : ISchoolCommandRepository
         {
             await using SchoolCommandContext context = await _contextFactory.CreateDbContextAsync();
             School? existingSchool = await context.Schools.FindAsync(school.Id);
+
             if (existingSchool == null)
             {
-                string errorCode = "SchoolNotFound";
-                return Error.NotFound(_localizer[errorCode], errorCode);
+                return Error.NotFound(_localizer[SchoolNotFoundErrorCode], SchoolNotFoundErrorCode);
             }
 
             context.Schools.Remove(existingSchool);
             int entries = await context.SaveChangesAsync();
 
-            return entries > 0 ? true : Error.Failure(_localizer["FailedToDeleteSchool"], "FailedToDeleteSchool");
+            if (entries <= 0)
+            {
+                return Error.Failure(_localizer[FailedToDeleteSchoolErrorCode], FailedToDeleteSchoolErrorCode);
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
-            return Error.Failure(_localizer["UnexpectedError"], ex.Message);
+            return Error.Failure(_localizer[UnexpectedErrorCode], ex.Message);
         }
     }
 }
