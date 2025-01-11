@@ -8,14 +8,20 @@ using Microsoft.Extensions.Localization;
 namespace DomainDrivenWebApplication.Infrastructure.Repositories;
 
 /// <summary>
-/// Repository for interacting with school data in the database.
-/// Provides methods for CRUD operations and additional queries like retrieving schools by date range
-/// and handling temporal data.
+/// Repository for managing school data with consistent CRUD and query operations.
 /// </summary>
 public class SchoolRepository : ISchoolRepository
 {
     private readonly SchoolContext _context;
     private readonly IStringLocalizer<SchoolRepository> _localizer;
+
+    private const string SchoolNotFoundErrorCode = "SchoolNotFound";
+    private const string NoSchoolsFoundErrorCode = "NoSchoolsFound";
+    private const string FailedToAddSchoolErrorCode = "FailedToAddSchool";
+    private const string FailedToUpdateSchoolErrorCode = "FailedToUpdateSchool";
+    private const string FailedToDeleteSchoolErrorCode = "FailedToDeleteSchool";
+    private const string NoSchoolsInDateRangeErrorCode = "NoSchoolsInDateRange";
+    private const string NoSchoolVersionsFoundErrorCode = "NoSchoolVersionsFound";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SchoolRepository"/> class.
@@ -28,136 +34,149 @@ public class SchoolRepository : ISchoolRepository
         _localizer = localizer;
     }
 
-    /// <summary>
-    /// Gets a school by its unique identifier (ID).
-    /// </summary>
-    /// <param name="id">The unique identifier of the school.</param>
-    /// <returns>An <see cref="ErrorOr{T}"/> object containing the school if found, otherwise a "not found" error.</returns>
+    /// <inheritdoc />
     public async Task<ErrorOr<School>> GetByIdAsync(int id)
     {
-        School? school = await _context.Schools.FindAsync(id);
+        School? school = await _context.Schools.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+
         if (school == null)
         {
-            string errorCode = "SchoolNotFound";
-            return Error.NotFound(_localizer[errorCode], errorCode);
+            return Error.NotFound(_localizer[SchoolNotFoundErrorCode], SchoolNotFoundErrorCode);
         }
+
         return school;
     }
 
-    /// <summary>
-    /// Retrieves all schools from the database.
-    /// </summary>
-    /// <returns>An <see cref="ErrorOr{T}"/> object containing a list of schools if any are found, otherwise a "not found" error.</returns>
+    /// <inheritdoc />
     public async Task<ErrorOr<List<School>>> GetAllAsync()
     {
-        List<School> schools = await _context.Schools.ToListAsync();
-        if (schools.Any())
+        List<School> schools = await _context.Schools.AsNoTracking().ToListAsync();
+
+        if (!schools.Any())
         {
-            return schools;
+            return Error.NotFound(_localizer[NoSchoolsFoundErrorCode], NoSchoolsFoundErrorCode);
         }
 
-        string errorCode = "NoSchoolsFound";
-        return Error.NotFound(_localizer[errorCode], errorCode);
+        return schools;
     }
 
-    /// <summary>
-    /// Adds a new school to the database.
-    /// </summary>
-    /// <param name="school">The school to add.</param>
-    /// <returns>An <see cref="ErrorOr{T}"/> object indicating success (true) or failure with an error message.</returns>
+    /// <inheritdoc />
     public async Task<ErrorOr<bool>> AddAsync(School school)
     {
-        await _context.Schools.AddAsync(school);
-        int entries = await _context.SaveChangesAsync();
-        if (entries > 0)
+        try
         {
+            await _context.Schools.AddAsync(school);
+            int entries = await _context.SaveChangesAsync();
+
+            if (entries <= 0)
+            {
+                return Error.Failure(_localizer[FailedToAddSchoolErrorCode], FailedToAddSchoolErrorCode);
+            }
+
+            _context.Entry(school).State = EntityState.Detached;
             return true;
         }
-
-        string errorCode = "FailedToAddSchool";
-        return Error.Failure(_localizer[errorCode], errorCode);
+        catch (Exception ex)
+        {
+            return Error.Failure(ex.Message, _localizer[FailedToAddSchoolErrorCode]);
+        }
     }
 
-    /// <summary>
-    /// Updates an existing school in the database.
-    /// </summary>
-    /// <param name="school">The school with updated information.</param>
-    /// <returns>An <see cref="ErrorOr{T}"/> object indicating success (true) or failure with an error message.</returns>
+    /// <inheritdoc />
     public async Task<ErrorOr<bool>> UpdateAsync(School school)
     {
-        _context.Entry(school).State = EntityState.Modified;
-        int entries = await _context.SaveChangesAsync();
-        if (entries > 0)
+        try
         {
+            School? existingSchool = await _context.Schools.FindAsync(school.Id);
+
+            if (existingSchool == null)
+            {
+                return Error.NotFound(_localizer[SchoolNotFoundErrorCode], SchoolNotFoundErrorCode);
+            }
+
+            existingSchool.Name = school.Name;
+            existingSchool.Address = school.Address;
+            existingSchool.PrincipalName = school.PrincipalName;
+
+            int entries = await _context.SaveChangesAsync();
+
+            if (entries <= 0)
+            {
+                return Error.Failure(_localizer[FailedToUpdateSchoolErrorCode], FailedToUpdateSchoolErrorCode);
+            }
+
+            _context.Entry(existingSchool).State = EntityState.Detached;
             return true;
         }
-
-        string errorCode = "FailedToUpdateSchool";
-        return Error.Failure(_localizer[errorCode], errorCode);
+        catch (Exception ex)
+        {
+            return Error.Failure(ex.Message, _localizer[FailedToUpdateSchoolErrorCode]);
+        }
     }
 
-    /// <summary>
-    /// Deletes a school from the database.
-    /// </summary>
-    /// <param name="school">The school to delete.</param>
-    /// <returns>An <see cref="ErrorOr{T}"/> object indicating success (true) or failure with an error message.</returns>
+    /// <inheritdoc />
     public async Task<ErrorOr<bool>> DeleteAsync(School school)
     {
-        _context.Schools.Remove(school);
-        int entries = await _context.SaveChangesAsync();
-        if (entries > 0)
+        try
         {
+            School? existingSchool = await _context.Schools.FindAsync(school.Id);
+
+            if (existingSchool == null)
+            {
+                return Error.NotFound(_localizer[SchoolNotFoundErrorCode], SchoolNotFoundErrorCode);
+            }
+
+            _context.Schools.Remove(existingSchool);
+            int entries = await _context.SaveChangesAsync();
+
+            if (entries <= 0)
+            {
+                return Error.Failure(_localizer[FailedToDeleteSchoolErrorCode], FailedToDeleteSchoolErrorCode);
+            }
+
             return true;
         }
-
-        string errorCode = "FailedToDeleteSchool";
-        return Error.Failure(_localizer[errorCode], errorCode);
+        catch (Exception ex)
+        {
+            return Error.Failure(ex.Message, _localizer[FailedToDeleteSchoolErrorCode]);
+        }
     }
 
-    /// <summary>
-    /// Retrieves schools within a specified date range based on their temporal validity.
-    /// </summary>
-    /// <param name="fromDate">The start date of the range.</param>
-    /// <param name="toDate">The end date of the range.</param>
-    /// <returns>An <see cref="ErrorOr{T}"/> object containing a list of schools that are valid within the date range, or a "not found" error if no schools are found.</returns>
+    /// <inheritdoc />
     public async Task<ErrorOr<List<School>>> GetSchoolsByDateRangeAsync(DateTime fromDate, DateTime toDate)
     {
         List<School> schools = await _context.Schools
             .TemporalAll()
+            .AsNoTracking()
             .Where(s =>
                 EF.Property<DateTime>(s, "ValidFrom") <= toDate &&
                 EF.Property<DateTime>(s, "ValidTo") >= fromDate)
             .OrderBy(s => EF.Property<DateTime>(s, "ValidFrom"))
             .ToListAsync();
 
-        if (schools.Any())
+        if (!schools.Any())
         {
-            return schools;
+            return Error.NotFound(_localizer[NoSchoolsInDateRangeErrorCode], NoSchoolsInDateRangeErrorCode);
         }
 
-        string errorCode = "NoSchoolsInDateRange";
-        return Error.NotFound(_localizer[errorCode], errorCode);
+        return schools;
     }
 
-    /// <summary>
-    /// Retrieves all versions of a school based on its unique identifier (ID).
-    /// </summary>
-    /// <param name="id">The unique identifier of the school.</param>
-    /// <returns>An <see cref="ErrorOr{T}"/> object containing a list of all versions of the specified school, or a "not found" error if no versions are found.</returns>
+    /// <inheritdoc />
     public async Task<ErrorOr<List<School>>> GetAllVersionsAsync(int id)
     {
         List<School> schools = await _context.Schools
             .TemporalAll()
+            .AsNoTracking()
             .Where(s => s.Id == id)
             .OrderBy(s => EF.Property<DateTime>(s, "ValidFrom"))
             .ToListAsync();
 
-        if (schools.Any())
+        if (!schools.Any())
         {
-            return schools;
+            return Error.NotFound(_localizer[NoSchoolVersionsFoundErrorCode], NoSchoolVersionsFoundErrorCode);
         }
 
-        string errorCode = "NoSchoolVersionsFound";
-        return Error.NotFound(_localizer[errorCode], errorCode);
+        return schools;
     }
 }
