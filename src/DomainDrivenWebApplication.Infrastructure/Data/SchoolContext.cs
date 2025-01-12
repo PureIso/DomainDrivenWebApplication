@@ -19,13 +19,10 @@ public sealed class SchoolContext : DbContext
     public SchoolContext(DbContextOptions<SchoolContext> options) : base(options)
     {
         if (Database.GetService<IDatabaseCreator>() is not RelationalDatabaseCreator dbCreate) return;
-        // Create Database 
         if (!dbCreate.CanConnect())
         {
             dbCreate.Create();
         }
-
-        // Create Tables
         if (!dbCreate.HasTables())
         {
             dbCreate.CreateTables();
@@ -55,16 +52,34 @@ public sealed class SchoolContext : DbContext
         entity.ToTable("Schools", b => b.IsTemporal(
             temporalTableBuilder =>
             {
-                temporalTableBuilder.HasPeriodStart("ValidFrom");  // Specifies the start of the system versioning period.
-                temporalTableBuilder.HasPeriodEnd("ValidTo");      // Specifies the end of the system versioning period.
-                temporalTableBuilder.UseHistoryTable("SchoolHistoricalData"); // Specifies the name of the history table for storing historical data.
+                temporalTableBuilder.HasPeriodStart("ValidFrom");
+                temporalTableBuilder.HasPeriodEnd("ValidTo");
+                temporalTableBuilder.UseHistoryTable("SchoolHistoricalData");
             }));
 
-        entity.HasKey(e => e.Id);                           // Configures the primary key for the School entity.
-        entity.Property(e => e.Id).ValueGeneratedOnAdd();   // Configures Id property to be generated on add.
-        entity.Property(e => e.Name).IsRequired();          // Configures Name property to be required (not nullable).
-        entity.Property(e => e.Address).IsRequired();       // Configures Address property to be required (not nullable).
-        entity.Property(e => e.PrincipalName).IsRequired(); // Configures PrincipalName property to be required (not nullable).
+        entity.HasKey(e => e.Id);
+
+        entity.HasIndex(e => e.Name).HasDatabaseName("IX_Schools_Name");
+        entity.HasIndex(e => e.CreatedAt).HasDatabaseName("IX_Schools_CreatedAt");
+
+        entity.Property(e => e.Id)
+            .ValueGeneratedOnAdd();
+
+        entity.Property(e => e.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        entity.Property(e => e.Address)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        entity.Property(e => e.PrincipalName)
+            .IsRequired()
+            .HasMaxLength(50);
+
+        entity.Property(e => e.CreatedAt)
+            .HasDefaultValueSql("GETUTCDATE()")
+            .ValueGeneratedOnAdd();
     }
 
     /// <summary>
@@ -73,7 +88,9 @@ public sealed class SchoolContext : DbContext
     /// <param name="optionsBuilder">The options builder.</param>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.ConfigureWarnings(warnings => warnings.Log(RelationalEventId.PendingModelChangesWarning));
+        optionsBuilder
+            .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+            .ConfigureWarnings(warnings => warnings.Log(RelationalEventId.PendingModelChangesWarning));
         base.OnConfiguring(optionsBuilder);
     }
 }
