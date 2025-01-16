@@ -10,13 +10,13 @@ public class SchoolServiceTests
 {
     private readonly Mock<ISchoolCommandRepository> _mockSchoolCommandRepository;
     private readonly Mock<ISchoolQueryRepository> _mockSchoolQueryRepository;
-    private readonly SchoolService _schoolService;
+    private readonly SchoolServiceCommandQuery _schoolService;
 
     public SchoolServiceTests()
     {
         _mockSchoolCommandRepository = new Mock<ISchoolCommandRepository>();
         _mockSchoolQueryRepository = new Mock<ISchoolQueryRepository>();
-        _schoolService = new SchoolService(_mockSchoolCommandRepository.Object, _mockSchoolQueryRepository.Object);
+        _schoolService = new SchoolServiceCommandQuery(_mockSchoolCommandRepository.Object, _mockSchoolQueryRepository.Object);
     }
 
     [Fact]
