@@ -14,25 +14,25 @@ namespace DomainDrivenWebApplication.Tests.UnitTests;
 
 public class SchoolControllerTests
 {
-    private readonly Mock<ISchoolRepository> _mockSchoolRepository;
-    private readonly SchoolService _schoolService;
+    private readonly Mock<ISchoolCommandRepository> _mockSchoolCommandRepository;
+    private readonly Mock<ISchoolQueryRepository> _mockSchoolQueryRepository;
     private readonly Mock<IMapper> _mockMapper;
-    private readonly Mock<ILogger<SchoolController>> _mockLogger;
     private readonly Mock<IStringLocalizer<BaseController>> _mockLocalizer;
     private readonly SchoolController _schoolController;
 
     public SchoolControllerTests()
     {
-        _mockSchoolRepository = new Mock<ISchoolRepository>();
-        _schoolService = new SchoolService(_mockSchoolRepository.Object);
+        _mockSchoolCommandRepository = new Mock<ISchoolCommandRepository>();
+        _mockSchoolQueryRepository = new Mock<ISchoolQueryRepository>();
+        SchoolServiceCommandQuery schoolService = new(_mockSchoolCommandRepository.Object, _mockSchoolQueryRepository.Object);
         _mockMapper = new Mock<IMapper>();
-        _mockLogger = new Mock<ILogger<SchoolController>>();
+        Mock<ILogger<SchoolController>> mockLogger = new();
         _mockLocalizer = new Mock<IStringLocalizer<BaseController>>();
 
         _schoolController = new SchoolController(
-            _schoolService,
+            schoolService,
             _mockMapper.Object,
-            _mockLogger.Object,
+            mockLogger.Object,
             _mockLocalizer.Object
         );
     }
@@ -45,7 +45,7 @@ public class SchoolControllerTests
         School school = new School { Id = 1, Name = "New School", Address = "New Address", CreatedAt = DateTime.UtcNow };
 
         _mockMapper.Setup(mapper => mapper.Map<School>(schoolDto)).Returns(school);
-        _mockSchoolRepository.Setup(repo => repo.AddAsync(school)).ReturnsAsync(true);
+        _mockSchoolCommandRepository.Setup(repo => repo.AddAsync(school)).ReturnsAsync(true);
         _mockMapper.Setup(mapper => mapper.Map<SchoolDto>(school)).Returns(new SchoolDto { Id = 1, Name = "New School", Address = "New Address" });
 
         // Act
@@ -71,7 +71,7 @@ public class SchoolControllerTests
             description: _mockLocalizer.Object["FailedToAddSchool"].Value);
 
         _mockMapper.Setup(mapper => mapper.Map<School>(schoolDto)).Returns(school);
-        _mockSchoolRepository.Setup(repo => repo.AddAsync(school)).ReturnsAsync(failureResult);
+        _mockSchoolCommandRepository.Setup(repo => repo.AddAsync(school)).ReturnsAsync(failureResult);
 
         IActionResult result = await _schoolController.AddSchool(schoolDto);
 
@@ -96,7 +96,7 @@ public class SchoolControllerTests
             code: "SchoolNotFound",
             description: _mockLocalizer.Object["SchoolNotFound"].Value);
 
-        _mockSchoolRepository.Setup(repo => repo.GetByIdAsync(schoolId)).ReturnsAsync(failureResult);
+        _mockSchoolQueryRepository.Setup(repo => repo.GetByIdAsync(schoolId)).ReturnsAsync(failureResult);
 
         IActionResult result = await _schoolController.GetSchoolById(schoolId);
 
@@ -116,7 +116,7 @@ public class SchoolControllerTests
         School school = new School { Id = schoolId, Name = "Test School", Address = "Test Address", CreatedAt = DateTime.UtcNow };
         SchoolDto schoolDto = new SchoolDto { Id = schoolId, Name = "Test School", Address = "Test Address", CreatedAt = DateTime.UtcNow };
 
-        _mockSchoolRepository.Setup(repo => repo.GetByIdAsync(schoolId)).ReturnsAsync(school);
+        _mockSchoolQueryRepository.Setup(repo => repo.GetByIdAsync(schoolId)).ReturnsAsync(school);
         _mockMapper.Setup(mapper => mapper.Map<SchoolDto>(school)).Returns(schoolDto);
 
         IActionResult result = await _schoolController.GetSchoolById(schoolId);
@@ -140,7 +140,7 @@ public class SchoolControllerTests
             new SchoolDto { Id = 2, Name = "School 2", Address = "Address 2", CreatedAt = DateTime.UtcNow }
         };
 
-        _mockSchoolRepository.Setup(repo => repo.GetAllAsync()).ReturnsAsync(schools);
+        _mockSchoolQueryRepository.Setup(repo => repo.GetAllAsync()).ReturnsAsync(schools);
         _mockMapper.Setup(mapper => mapper.Map<List<SchoolDto>>(schools)).Returns(schoolDtos);
 
         IActionResult result = await _schoolController.GetAllSchools();
@@ -178,7 +178,7 @@ public class SchoolControllerTests
             new SchoolDto { Id = 2, Name = "School 2", Address = "Address 2", CreatedAt = DateTime.UtcNow }
         };
 
-        _mockSchoolRepository.Setup(repo => repo.GetSchoolsByDateRangeAsync(fromDate, toDate)).ReturnsAsync(schools);
+        _mockSchoolQueryRepository.Setup(repo => repo.GetSchoolsByDateRangeAsync(fromDate, toDate)).ReturnsAsync(schools);
         _mockMapper.Setup(mapper => mapper.Map<List<SchoolDto>>(schools)).Returns(schoolDtos);
 
         IActionResult result = await _schoolController.GetSchoolsByDateRange(fromDate, toDate);
