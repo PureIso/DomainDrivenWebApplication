@@ -19,7 +19,7 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture>, IDisp
     public async Task Can_Add_and_Get_School()
     {
         // Arrange
-        SchoolService? service = _fixture.SchoolService;
+        SchoolServiceCommandQuery? service = _fixture.SchoolServiceCommandQuery;
         Assert.NotNull(service);
 
         School school = new School { Name = "Test School", Address = "Test Address", PrincipalName = "John Doe" };
@@ -42,7 +42,7 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture>, IDisp
     public async Task Can_Get_All_Schools()
     {
         // Arrange
-        SchoolService? service = _fixture.SchoolService;
+        SchoolServiceCommandQuery? service = _fixture.SchoolServiceCommandQuery;
         Assert.NotNull(service);
 
         School school1 = new School { Name = "School 1", Address = "Test Address", PrincipalName = "John Doe" };
@@ -71,7 +71,7 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture>, IDisp
     public async Task Can_Update_School()
     {
         // Arrange
-        SchoolService? service = _fixture.SchoolService;
+        SchoolServiceCommandQuery? service = _fixture.SchoolServiceCommandQuery;
         Assert.NotNull(service);
 
         School school = new School { Name = "Test School", Address = "Test Address", PrincipalName = "John Doe" };
@@ -97,7 +97,7 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture>, IDisp
     public async Task Can_Delete_School()
     {
         // Arrange
-        SchoolService? service = _fixture.SchoolService;
+        SchoolServiceCommandQuery? service = _fixture.SchoolServiceCommandQuery;
         Assert.NotNull(service);
 
         School school = new School { Name = "Test School", Address = "Test Address", PrincipalName = "John Doe" };
@@ -119,7 +119,7 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture>, IDisp
     public async Task Can_Get_Schools_By_Date_Range()
     {
         // Arrange
-        SchoolService? service = _fixture.SchoolService;
+        SchoolServiceCommandQuery? service = _fixture.SchoolServiceCommandQuery;
         Assert.NotNull(service);
 
         School school = new School { Name = "School 1", Address = "Test Address", PrincipalName = "John Doe", CreatedAt = DateTime.UtcNow };
@@ -153,7 +153,7 @@ public class SchoolServiceIntegrationTests : IClassFixture<SchoolFixture>, IDisp
     public async Task Can_Get_All_Versions_Of_School()
     {
         // Arrange
-        SchoolService? service = _fixture.SchoolService;
+        SchoolServiceCommandQuery? service = _fixture.SchoolServiceCommandQuery;
         Assert.NotNull(service);
 
         // Create and add the initial version of the school
