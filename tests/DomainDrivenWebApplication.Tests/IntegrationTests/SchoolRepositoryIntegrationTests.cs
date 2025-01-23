@@ -163,9 +163,8 @@ public class SchoolRepositoryIntegrationTests : IClassFixture<SchoolFixture>, ID
         // Assert
         Assert.False(allVersionsResult.IsError, "Failed to retrieve all versions.");
         List<School> allVersions = allVersionsResult.Value;
-        Assert.Equal(2, allVersions.Count); // Expecting two versions
+        Assert.Equal(2, allVersions.Count);
 
-        // Optional: Assert specific properties of each version if needed
         Assert.Equal("School 1", allVersions[0].Name);
         Assert.Equal("School 2", allVersions[1].Name);
     }
